@@ -1,0 +1,345 @@
+'use client';
+
+import React, { useEffect, useRef, useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import L from 'leaflet';
+
+interface Incident {
+  id: string;
+  category: string;
+  lat: number;
+  lng: number;
+  status: string;
+  baseTariff: number;
+  timestamp: string;
+}
+
+interface Mechanic {
+  id: string | number;
+  name: string;
+  businessName?: string;
+  lat: number;
+  lng: number;
+  tier: 'Basic' | 'Premium Pro' | 'basic' | 'premium';
+  isAvailable?: boolean;
+  pendingLocation?: any;
+}
+
+interface MapInnerProps {
+  userLocation: [number, number];
+  mapCenter?: [number, number];
+  isBrowsingRegion?: boolean;
+  incidents: Incident[];
+  mechanics: Mechanic[];
+  reportMode: boolean;
+  reportLocation: [number, number];
+  onReportLocationChange: (lat: number, lng: number) => void;
+  audioAlertEnabled: boolean;
+  zoom?: number;
+}
+
+const createUserIcon = () =>
+  L.divIcon({
+    className: 'custom-user-icon',
+    html: `
+      <div class="relative flex items-center justify-center h-10 w-10">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+        <div class="relative flex items-center justify-center h-8 w-8 rounded-full bg-cyan-500 text-slate-950 shadow-2xl border-2 border-white font-extrabold text-sm">
+          🚗
+        </div>
+      </div>
+    `,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+  });
+
+const createReportIcon = () =>
+  L.divIcon({
+    className: 'custom-report-icon',
+    html: `
+      <div class="relative flex items-center justify-center h-10 w-10">
+        <span class="absolute inline-flex h-full w-full rounded-full bg-accent-orange opacity-40 animate-ping"></span>
+        <div class="relative flex items-center justify-center h-8 w-8 rounded-full bg-accent-orange border border-white text-white font-bold text-sm shadow-xl shadow-orange-950/50">
+          📍
+        </div>
+      </div>
+    `,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+  });
+
+const createIncidentIcon = (category: string) => {
+  const iconEmoji =
+    category === 'Smoke/Overheating'
+      ? '💨'
+      : category === 'Flat Tire'
+      ? '🛞'
+      : category === 'Electrical/Won\'t Start'
+      ? '⚡'
+      : '🛑';
+  return L.divIcon({
+    className: 'custom-incident-icon',
+    html: `
+      <div class="relative flex items-center justify-center h-10 w-10">
+        <div class="absolute inset-0 bg-accent-orange/20 rounded-full border border-accent-orange/40 animate-pulse"></div>
+        <div class="relative flex items-center justify-center h-7 w-7 rounded-full bg-accent-orange text-white shadow-lg border border-slate-900 text-xs">
+          ${iconEmoji}
+        </div>
+      </div>
+    `,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+  });
+};
+
+const createMechanicIcon = (tier: 'Basic' | 'Premium Pro' | 'basic' | 'premium') => {
+  const isPremium = tier === 'Premium Pro' || (tier as string) === 'premium';
+  const colorClass = isPremium ? 'bg-amber-500' : 'bg-emerald-500';
+  return L.divIcon({
+    className: 'custom-mechanic-icon',
+    html: `
+      <div class="relative flex items-center justify-center h-9 w-9">
+        <div class="absolute inset-0 bg-accent-green/20 rounded-full border border-accent-green/30 animate-pulse"></div>
+        <div class="relative flex items-center justify-center h-6 w-6 rounded-full ${colorClass} text-slate-950 shadow-md border border-slate-900 text-xs font-bold">
+          🛠️
+        </div>
+      </div>
+    `,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+};
+
+const createRegionCenterIcon = () =>
+  L.divIcon({
+    className: 'custom-region-icon',
+    html: `
+      <div class="relative flex items-center justify-center h-10 w-10">
+        <div class="flex items-center justify-center h-8 w-8 rounded-full bg-amber-500 text-slate-950 shadow-2xl border-2 border-white font-extrabold text-sm">
+          📍
+        </div>
+      </div>
+    `,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+  });
+
+function RecenterMap({ position, zoom }: { position: [number, number]; zoom: number }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(position, zoom);
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [position, zoom, map]);
+  return null;
+}
+
+export default function MapInner({
+  userLocation,
+  mapCenter,
+  isBrowsingRegion,
+  incidents,
+  mechanics,
+  reportMode,
+  reportLocation,
+  onReportLocationChange,
+  audioAlertEnabled,
+  zoom = 14,
+}: MapInnerProps) {
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const userMarkerRef = useRef<any>(null);
+
+  const effectiveCenter = mapCenter || userLocation;
+
+  // Active hazards filtering
+  const activeIncidents = useMemo(() => {
+    return incidents.filter((i) => i.status !== 'Cancelled' && i.status !== 'Resolved');
+  }, [incidents]);
+
+  // Audio warning alert beeps logic
+  useEffect(() => {
+    if (!audioAlertEnabled || typeof window === 'undefined') return;
+
+    const playWarningBeep = () => {
+      try {
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        if (audioCtxRef.current.state === 'suspended') {
+          audioCtxRef.current.resume();
+        }
+        const osc = audioCtxRef.current.createOscillator();
+        const gain = audioCtxRef.current.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(880, audioCtxRef.current.currentTime);
+        gain.gain.setValueAtTime(0.15, audioCtxRef.current.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtxRef.current.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtxRef.current.destination);
+        osc.start();
+        osc.stop(audioCtxRef.current.currentTime + 0.4);
+      } catch (e) {
+        console.log('Audio Context Error', e);
+      }
+    };
+
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 6371e3;
+      const phi1 = (lat1 * Math.PI) / 180;
+      const phi2 = (lat2 * Math.PI) / 180;
+      const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+      const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+        Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+
+    const interval = setInterval(() => {
+      let isNearHazard = false;
+      for (const incident of activeIncidents) {
+        const dist = calculateDistance(userLocation[0], userLocation[1], incident.lat, incident.lng);
+        if (dist <= 2000) {
+          isNearHazard = true;
+          break;
+        }
+      }
+      if (isNearHazard) {
+        playWarningBeep();
+      }
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [audioAlertEnabled, userLocation, activeIncidents]);
+
+  const reportMarkerHandlers = useMemo(
+    () => ({
+      dragend(e: any) {
+        const marker = e.target;
+        if (marker != null) {
+          const latLng = marker.getLatLng();
+          onReportLocationChange(latLng.lat, latLng.lng);
+        }
+      },
+    }),
+    [onReportLocationChange]
+  );
+
+  return (
+    <MapContainer
+      center={effectiveCenter}
+      zoom={zoom}
+      scrollWheelZoom={true}
+      className="w-full h-full z-10"
+      zoomControl={false}
+    >
+      <TileLayer
+        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+      />
+
+      <RecenterMap position={effectiveCenter} zoom={zoom} />
+
+      {/* Driver Vehicle Car Location Marker */}
+      <Marker position={userLocation} icon={createUserIcon()} ref={userMarkerRef}>
+        <Popup>
+          <div className="text-xs p-1 text-slate-200">
+            <span className="font-bold text-cyan-400">
+              {userLocation[0] === 7.8731 ? '📍 Platform Central Operations Node' : '🚗 Your Vehicle GPS Location'}
+            </span>
+            <br />
+            <span className="text-[10px] text-slate-400">{userLocation[0].toFixed(4)}, {userLocation[1].toFixed(4)}</span>
+          </div>
+        </Popup>
+      </Marker>
+
+      {/* Browsing Region Center Marker */}
+      {isBrowsingRegion && mapCenter && (
+        <Marker position={mapCenter} icon={createRegionCenterIcon()}>
+          <Popup>
+            <div className="text-xs p-1 text-slate-200">
+              <span className="font-bold text-amber-400">📍 Region Inspection Center</span>
+              <br />
+              <span className="text-[10px] text-slate-400">Showing regional rescue garages</span>
+            </div>
+          </Popup>
+        </Marker>
+      )}
+
+      {/* Report breakdown draggable pin marker */}
+      {reportMode && (
+        <Marker
+          position={reportLocation}
+          icon={createReportIcon()}
+          draggable={true}
+          eventHandlers={reportMarkerHandlers}
+        >
+          <Popup>
+            <div className="text-xs p-1 font-semibold text-slate-100">
+              Drag pin to adjust exact breakdown location.
+            </div>
+          </Popup>
+        </Marker>
+      )}
+
+      {/* Active Incident Pins with 2km Hazard Rings (Excludes Cancelled/Resolved) */}
+      {activeIncidents.map((incident) => (
+        <React.Fragment key={incident.id}>
+          <Marker position={[incident.lat, incident.lng]} icon={createIncidentIcon(incident.category)}>
+            <Popup>
+              <div className="text-xs p-2 text-slate-200">
+                <div className="font-bold text-accent-orange text-sm mb-1">{incident.category}</div>
+                <div className="text-slate-400 mb-1">Status: <span className="text-accent-yellow">{incident.status}</span></div>
+                <div className="text-slate-400 mb-1">Fee Estimate: <span className="text-accent-green font-semibold">{incident.baseTariff.toLocaleString()} LKR</span></div>
+                <div className="text-[10px] text-slate-500">Reported: {new Date(incident.timestamp).toLocaleTimeString()}</div>
+              </div>
+            </Popup>
+          </Marker>
+
+          <Circle
+            center={[incident.lat, incident.lng]}
+            radius={2000}
+            pathOptions={{
+              className: 'pulsing-radar-circle',
+              color: '#FF5722',
+              fillColor: '#FF5722',
+              fillOpacity: 0.05,
+              weight: 1.5,
+              dashArray: '4, 8',
+            }}
+          />
+        </React.Fragment>
+      ))}
+
+      {/* Verified Mechanics */}
+      {mechanics
+        .filter((m) => m.isAvailable !== false)
+        .map((mech) => (
+          <Marker key={mech.id} position={[mech.lat, mech.lng]} icon={createMechanicIcon(mech.tier)}>
+            <Popup>
+              <div className="text-xs p-2 text-slate-200">
+                <div className="font-semibold text-accent-green text-sm flex items-center gap-1">
+                  {mech.businessName || mech.name}
+                  {(mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium') && (
+                    <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full border border-amber-500/40">
+                      PRO
+                    </span>
+                  )}
+                </div>
+                <div className="text-slate-400 mt-1">Ready for dispatch</div>
+                <div className="text-[10px] text-slate-500 capitalize">Radius coverage: {mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium' ? '25km' : '5km'}</div>
+                {mech.pendingLocation && (
+                  <div className="mt-1.5 p-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold leading-tight">
+                    ℹ️ A new location update has been requested to {mech.pendingLocation.city} (Pending Admin Approval)
+                  </div>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+    </MapContainer>
+  );
+}

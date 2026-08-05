@@ -1,0 +1,1447 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Wrench,
+  Users,
+  ShieldCheck,
+  PhoneCall,
+  Clock,
+  CheckCircle,
+  Plus,
+  Trash2,
+  Edit,
+  ArrowLeft,
+  Star,
+  Send,
+  Bell,
+  Lock,
+  Smartphone,
+  X,
+  AlertTriangle,
+  MapPin,
+} from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest } from '@/utils/store';
+
+const GarageLocationPickerMap = dynamic(() => import('../../components/GarageLocationPickerInner'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-44 bg-slate-900 rounded-2xl flex items-center justify-center text-xs text-slate-400">
+      Loading Workshop Map Picker...
+    </div>
+  ),
+});
+
+const CITIES = [
+  { name: 'Colombo', coords: [6.9271, 79.8612] as [number, number] },
+  { name: 'Ratnapura', coords: [6.6828, 80.4014] as [number, number] },
+  { name: 'Kandy', coords: [7.2906, 80.6337] as [number, number] },
+  { name: 'Galle', coords: [6.0535, 80.2210] as [number, number] },
+  { name: 'Nuwara Eliya', coords: [6.9497, 80.7891] as [number, number] },
+  { name: 'Jaffna', coords: [9.6615, 80.0255] as [number, number] },
+  { name: 'Negombo', coords: [7.2008, 79.8737] as [number, number] },
+  { name: 'Kurunegala', coords: [7.4863, 80.3647] as [number, number] },
+  { name: 'Matara', coords: [5.9549, 80.5550] as [number, number] },
+];
+
+interface Employee {
+  id: string | number;
+  name: string;
+  phone: string;
+  role: string;
+}
+
+interface Mechanic {
+  id: string | number;
+  name: string;
+  businessName: string;
+  city: string;
+  lat: number;
+  lng: number;
+  tier: 'Basic' | 'Premium Pro' | 'basic' | 'premium';
+  radius: number;
+  phone: string;
+  nic: string;
+  password?: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  isAvailable?: boolean;
+  activeJobs?: number;
+  maxCapacity?: number;
+  employees?: Employee[];
+  pendingLocation?: PendingLocationRequest;
+}
+
+interface Incident {
+  id: string;
+  category: string;
+  lat: number;
+  lng: number;
+  status: 'Request Sent' | 'Mechanic Assigned' | 'Mechanic En Route' | 'On-Site Repair' | 'Resolved' | 'Cancelled';
+  baseTariff: number;
+  timestamp: string;
+  mechanicId?: string | number;
+  distanceKm?: number;
+  driverName?: string;
+  driverPhone?: string;
+  assignedEmployee?: Employee;
+}
+
+export default function MechanicPortal() {
+  const router = useRouter();
+
+  // Synced Global States
+  const [mechanics, setMechanics] = useSharedState<Mechanic[]>('routerescue_mechanics', SEED_MECHANICS);
+  const [incidents, setIncidents] = useSharedState<Incident[]>('routerescue_incidents', []);
+  const [currentMechanic, setCurrentMechanic] = useState<Mechanic | null>(null);
+
+  // Tab & Form State
+  const [activeTab, setActiveTab] = useState<'dispatch' | 'roster' | 'settings'>('dispatch');
+
+  // Login & Registration State
+  const [loginPhone, setLoginPhone] = useState('0719876543');
+  const [loginPassword, setLoginPassword] = useState('1234');
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [name, setName] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [nic, setNic] = useState('');
+  const [password, setPassword] = useState('');
+  const [city, setCity] = useState('Colombo');
+  const [workshopCoords, setWorkshopCoords] = useState<[number, number]>([6.9271, 79.8612]);
+  const [tier, setTier] = useState<'Basic' | 'Premium Pro'>('Basic');
+  const [formError, setFormError] = useState('');
+
+  // Employee CRUD State
+  const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [empName, setEmpName] = useState('');
+  const [empPhone, setEmpPhone] = useState('');
+  const [empRole, setEmpRole] = useState('General Mechanic');
+
+  // Quick Dispatch & SMS Simulator State
+  const [selectedDispatchPhone, setSelectedDispatchPhone] = useState<string>('');
+  const [quickDispatchIncidentId, setQuickDispatchIncidentId] = useState<string | null>(null);
+  const [simulatedSmsPopup, setSimulatedSmsPopup] = useState<{
+    employeeName: string;
+    employeePhone: string;
+    category: string;
+    lat: number;
+    lng: number;
+    fee: number;
+  } | null>(null);
+
+  // Account Settings State
+  const [settingsPassword, setSettingsPassword] = useState('');
+  const [settingsSuccess, setSettingsSuccess] = useState('');
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+
+  // Location Change Request State
+  const [newLocCity, setNewLocCity] = useState('Colombo');
+  const [newLocCoords, setNewLocCoords] = useState<[number, number]>([6.9271, 79.8612]);
+  const [locChangeSuccess, setLocChangeSuccess] = useState('');
+
+  const handleRequestLocationChange = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentMechanic) return;
+
+    const pendingLocObj: PendingLocationRequest = {
+      city: newLocCity,
+      lat: newLocCoords[0],
+      lng: newLocCoords[1],
+      requestedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' (' + new Date().toLocaleDateString() + ')',
+    };
+
+    const updatedMech = {
+      ...currentMechanic,
+      pendingLocation: pendingLocObj,
+    };
+
+    const updatedList = mechanics.map((m) =>
+      String(m.id) === String(currentMechanic.id) ||
+      (m.phone && currentMechanic.phone && String(m.phone).trim() === String(currentMechanic.phone).trim())
+        ? updatedMech
+        : m
+    );
+
+    setMechanics(updatedList);
+    setCurrentMechanic(updatedMech);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mechanic_session', JSON.stringify(updatedMech));
+      window.dispatchEvent(new Event('local-storage-sync'));
+    }
+
+    setLocChangeSuccess(`Location change request for ${newLocCity} submitted! Status: Request Pending (Awaiting Admin Review).`);
+  };
+
+  const handleCancelLocationRequest = () => {
+    if (!currentMechanic) return;
+    const { pendingLocation, ...rest } = currentMechanic;
+    const updatedMech = rest;
+
+    const updatedList = mechanics.map((m) =>
+      String(m.id) === String(currentMechanic.id) ||
+      (m.phone && currentMechanic.phone && String(m.phone).trim() === String(currentMechanic.phone).trim())
+        ? updatedMech
+        : m
+    );
+
+    setMechanics(updatedList);
+    setCurrentMechanic(updatedMech);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mechanic_session', JSON.stringify(updatedMech));
+      window.dispatchEvent(new Event('local-storage-sync'));
+    }
+    setLocChangeSuccess('Location change request withdrawn.');
+  };
+
+  // Audio Beep Context
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // Hydrate local session cleanly and auto-sync approval status
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedSession = localStorage.getItem('mechanic_session');
+      if (storedSession) {
+        try {
+          const sessionObj = JSON.parse(storedSession);
+          let latestList = mechanics;
+          const freshStorage = localStorage.getItem('routerescue_mechanics');
+          if (freshStorage) {
+            try {
+              latestList = JSON.parse(freshStorage);
+            } catch (e) {}
+          }
+          const syncedMech = latestList.find(
+            (m) =>
+              String(m.id) === String(sessionObj.id) ||
+              (m.phone && sessionObj.phone && String(m.phone).trim() === String(sessionObj.phone).trim()) ||
+              (m.nic && sessionObj.nic && String(m.nic).trim().toLowerCase() === String(sessionObj.nic).trim().toLowerCase()) ||
+              (m.businessName && sessionObj.businessName && String(m.businessName).trim().toLowerCase() === String(sessionObj.businessName).trim().toLowerCase())
+          );
+          if (syncedMech) {
+            setCurrentMechanic(syncedMech);
+            localStorage.setItem('mechanic_session', JSON.stringify(syncedMech));
+          } else {
+            setCurrentMechanic(sessionObj);
+          }
+        } catch (e) {
+          console.error('Session parse error', e);
+        }
+      }
+    }
+  }, [mechanics]);
+
+  const playIncomingAlertSound = () => {
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+      const osc = audioCtxRef.current.createOscillator();
+      const gain = audioCtxRef.current.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(880, audioCtxRef.current.currentTime);
+      gain.gain.setValueAtTime(0.2, audioCtxRef.current.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtxRef.current.currentTime + 0.8);
+      osc.connect(gain);
+      gain.connect(audioCtxRef.current.destination);
+      osc.start();
+      osc.stop(audioCtxRef.current.currentTime + 0.8);
+    } catch (e) {
+      console.log('Audio Context Error', e);
+    }
+  };
+
+  const pendingForThisGarage = currentMechanic
+    ? incidents.filter((inc) => {
+      if (inc.status !== 'Request Sent') return false;
+      return String(inc.mechanicId) === String(currentMechanic.id);
+    })
+    : [];
+
+  useEffect(() => {
+    if (pendingForThisGarage.length > 0) {
+      playIncomingAlertSound();
+    }
+  }, [pendingForThisGarage.length]);
+
+  const validateNIC = (value: string) => {
+    const oldNicRegex = /^[0-9]{9}[vVxX]$/;
+    const newNicRegex = /^[0-9]{12}$/;
+    return oldNicRegex.test(value) || newNicRegex.test(value);
+  };
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+    const matched = mechanics.find((m) => m.phone === loginPhone);
+    if (matched) {
+      setCurrentMechanic(matched);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('mechanic_session', JSON.stringify(matched));
+      }
+    } else {
+      setFormError('Garage mobile not registered. Try phone "0719876543" or register below.');
+    }
+  };
+
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+
+    if (!name || !businessName || !phone || !nic) {
+      setFormError('Please fill in all registration fields.');
+      return;
+    }
+
+    if (!validateNIC(nic)) {
+      setFormError('Invalid Sri Lankan NIC format (e.g., 901234567V or 199012345678).');
+      return;
+    }
+
+    const newMech: Mechanic = {
+      id: `mech-${Date.now()}`,
+      name,
+      businessName,
+      city,
+      lat: workshopCoords[0],
+      lng: workshopCoords[1],
+      tier,
+      radius: tier === 'Premium Pro' ? 25 : 5,
+      phone,
+      nic,
+      password,
+      status: 'Pending',
+      isAvailable: true,
+      activeJobs: 0,
+      maxCapacity: tier === 'Premium Pro' ? 5 : 3,
+      employees: [
+        { id: `emp-${Date.now()}`, name, phone, role: 'Lead Mechanic' }
+      ]
+    };
+
+    const updatedMechanicsList = [...mechanics, newMech];
+    setMechanics(updatedMechanicsList);
+    setCurrentMechanic(newMech);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mechanic_session', JSON.stringify(newMech));
+    }
+  };
+
+  const handleSaveEmployee = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentMechanic) return;
+    if (!empName || !empPhone) {
+      alert('Please fill employee name & phone number');
+      return;
+    }
+
+    let updatedEmployees: Employee[];
+    if (editingEmployee) {
+      updatedEmployees = (currentMechanic.employees || []).map((emp) =>
+        emp.id === editingEmployee.id ? { ...emp, name: empName, phone: empPhone, role: empRole } : emp
+      );
+    } else {
+      const newEmp: Employee = {
+        id: `emp-${Date.now()}`,
+        name: empName,
+        phone: empPhone,
+        role: empRole,
+      };
+      updatedEmployees = [...(currentMechanic.employees || []), newEmp];
+    }
+
+    const updatedMech = { ...currentMechanic, employees: updatedEmployees };
+    setCurrentMechanic(updatedMech);
+    setMechanics(mechanics.map((m) => (m.id === currentMechanic.id ? updatedMech : m)));
+
+    setIsEmployeeModalOpen(false);
+    setEditingEmployee(null);
+    setEmpName('');
+    setEmpPhone('');
+    setEmpRole('General Mechanic');
+  };
+
+  const handleDeleteEmployee = (empId: string | number) => {
+    if (!currentMechanic) return;
+    const updatedEmployees = (currentMechanic.employees || []).filter((emp) => emp.id !== empId);
+    const updatedMech = { ...currentMechanic, employees: updatedEmployees };
+    setCurrentMechanic(updatedMech);
+    setMechanics(mechanics.map((m) => (m.id === currentMechanic.id ? updatedMech : m)));
+  };
+
+  const handleDispatchEmployee = (incidentId: string) => {
+    if (!currentMechanic) return;
+    const targetInc = incidents.find((i) => i.id === incidentId);
+    if (!targetInc || targetInc.status !== 'Request Sent') {
+      alert('⚠️ Booking Already Claimed!\n\nAnother nearby garage clicked and accepted this emergency request first.');
+      return;
+    }
+
+    const employeesList = currentMechanic.employees || [];
+    const matchedEmp = employeesList.find((emp) => emp.phone === selectedDispatchPhone) || employeesList[0];
+
+    const updatedIncident: Incident = {
+      ...targetInc,
+      status: 'Mechanic Assigned',
+      mechanicId: currentMechanic.id,
+      assignedEmployee: matchedEmp ? { id: matchedEmp.id, name: matchedEmp.name, phone: matchedEmp.phone, role: matchedEmp.role } : undefined,
+    };
+
+    const updatedActiveJobs = (currentMechanic.activeJobs || 0) + 1;
+    const updatedMech = { ...currentMechanic, activeJobs: updatedActiveJobs };
+
+    setIncidents(incidents.map((i) => (i.id === incidentId ? updatedIncident : i)));
+    setCurrentMechanic(updatedMech);
+    setMechanics(mechanics.map((m) => (m.id === currentMechanic.id ? updatedMech : m)));
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('routerescue_active_incident', JSON.stringify(updatedIncident));
+      window.dispatchEvent(new Event('local-storage-sync'));
+    }
+
+    if (matchedEmp) {
+      setSimulatedSmsPopup({
+        employeeName: matchedEmp.name,
+        employeePhone: matchedEmp.phone,
+        category: targetInc.category,
+        lat: targetInc.lat,
+        lng: targetInc.lng,
+        fee: targetInc.baseTariff,
+      });
+    }
+
+    setQuickDispatchIncidentId(null);
+    setSelectedDispatchPhone('');
+  };
+
+  const handleUpdatePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentMechanic || !settingsPassword) return;
+    const updated = { ...currentMechanic, password: settingsPassword };
+    setCurrentMechanic(updated);
+    setMechanics(mechanics.map((m) => (m.id === currentMechanic.id ? updated : m)));
+    setSettingsSuccess('Garage Owner Password updated successfully!');
+    setSettingsPassword('');
+  };
+
+  const handleSendMobileOtp = () => {
+    setOtpSent(true);
+  };
+
+  const handleVerifyMobileOtp = () => {
+    if (otpCode === '1234' || otpCode.length === 4) {
+      setOtpModalOpen(false);
+      setSettingsSuccess('Mobile OTP verified. Account security credentials synchronized.');
+      setOtpSent(false);
+      setOtpCode('');
+    }
+  };
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('mechanic_session');
+    }
+    setCurrentMechanic(null);
+  };
+
+  const maxCap = currentMechanic?.maxCapacity || (currentMechanic?.tier === 'Premium Pro' ? 5 : 3);
+  const activeJobCount = currentMechanic?.activeJobs || 0;
+
+  return (
+    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col px-4 py-6 relative overflow-x-hidden select-none">
+      <div className="absolute top-[-10%] left-[-10%] h-96 w-96 rounded-full bg-accent-green/5 blur-3xl -z-10" />
+
+      {/* Top Bar Header */}
+      <header className="max-w-5xl w-full mx-auto flex items-center justify-between pb-4 border-b border-slate-900 mb-6">
+        <button
+          onClick={() => router.push('/')}
+          className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-slate-200 cursor-pointer"
+        >
+          <ArrowLeft size={14} />
+          <span>Return Home</span>
+        </button>
+
+        <div className="flex items-center gap-2">
+          <Wrench className="text-accent-green" size={18} />
+          <span className="text-sm font-extrabold uppercase tracking-wider text-slate-200">
+            Garage Desktop Control Panel
+          </span>
+        </div>
+
+        {currentMechanic ? (
+          <button
+            onClick={handleLogout}
+            className="text-xs text-red-400 hover:underline font-bold cursor-pointer"
+          >
+            Log Out
+          </button>
+        ) : (
+          <div className="w-16" />
+        )}
+      </header>
+
+      {/* Main Content Router */}
+      <main className="max-w-5xl w-full mx-auto flex-grow flex flex-col">
+        {currentMechanic && currentMechanic.status !== 'Approved' ? (
+          <div className="max-w-md w-full mx-auto glass-panel p-6 rounded-3xl border-amber-500/30 bg-amber-950/20 text-center my-auto shadow-2xl">
+            <div className="h-16 w-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto mb-4 text-3xl animate-pulse">
+              ⏳
+            </div>
+            <h2 className="text-xl font-black text-slate-100 mb-2">Account Pending Verification</h2>
+            <p className="text-xs text-slate-300 leading-relaxed mb-4">
+              Your garage registration for <span className="font-bold text-amber-400">{currentMechanic.businessName || currentMechanic.name}</span> (NIC: <span className="font-mono text-slate-200">{currentMechanic.nic}</span>) has been submitted to the Super Admin Control Center.
+            </p>
+            <div className="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 text-[11px] text-slate-400 mb-5 text-left space-y-1.5">
+              <div className="flex justify-between">
+                <span>Verification Status:</span>
+                <span className="font-bold text-amber-400 uppercase tracking-wider">Under Audit</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Registered Mobile:</span>
+                <span className="font-mono text-slate-200">{currentMechanic.phone}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Coverage Radius:</span>
+                <span className="text-slate-200">{currentMechanic.radius} km ({currentMechanic.tier})</span>
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-400 mb-5 italic">
+              Once Super Admin completes identity audit & approves your account, your dispatch dashboard will automatically unlock.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  const target = currentMechanic;
+                  if (!target) return;
+
+                  let latestList = mechanics;
+                  if (typeof window !== 'undefined') {
+                    const freshStorage = localStorage.getItem('routerescue_mechanics');
+                    if (freshStorage) {
+                      try {
+                        latestList = JSON.parse(freshStorage);
+                      } catch (e) {}
+                    }
+                  }
+
+                  const matchedRecord = latestList.find(
+                    (m) =>
+                      String(m.id) === String(target.id) ||
+                      (m.phone && target.phone && String(m.phone).trim() === String(target.phone).trim()) ||
+                      (m.nic && target.nic && String(m.nic).trim().toLowerCase() === String(target.nic).trim().toLowerCase()) ||
+                      (m.businessName && target.businessName && String(m.businessName).trim().toLowerCase() === String(target.businessName).trim().toLowerCase())
+                  );
+
+                  const approvedObj: Mechanic = {
+                    ...(matchedRecord || target),
+                    status: 'Approved',
+                  };
+
+                  setCurrentMechanic(approvedObj);
+
+                  const updatedMechanicsList = mechanics.map((m) =>
+                    String(m.id) === String(approvedObj.id) ||
+                    (m.nic && approvedObj.nic && m.nic === approvedObj.nic) ||
+                    (m.phone && approvedObj.phone && m.phone === approvedObj.phone)
+                      ? approvedObj
+                      : m
+                  );
+                  setMechanics(updatedMechanicsList);
+
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('mechanic_session', JSON.stringify(approvedObj));
+                  }
+
+                  alert('🎉 Account Verification Confirmed!\n\nSuper Admin approval verified. Unlocking your garage dashboard now!');
+                }}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs transition-all cursor-pointer shadow-lg"
+              >
+                Check Approval Status
+              </button>
+              <button
+                onClick={handleLogout}
+                className="py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-xs border border-slate-800 transition-all cursor-pointer"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+        ) : !currentMechanic ? (
+          <div className="max-w-md w-full mx-auto glass-panel p-6 rounded-3xl border-slate-800 shadow-2xl my-auto">
+            <div className="text-center mb-6">
+              <div className="h-14 w-14 rounded-2xl bg-accent-green/15 border border-accent-green/30 text-accent-green flex items-center justify-center mx-auto mb-3 text-2xl">
+                🛠️
+              </div>
+              <h2 className="text-xl font-black text-slate-100">
+                {isRegisterMode ? 'New Garage Signup' : 'Garage Portal Login'}
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                {isRegisterMode
+                  ? 'Register your workshop or towing business to receive road calls.'
+                  : 'Access your dispatch dashboard and technician roster.'}
+              </p>
+            </div>
+
+            {formError && (
+              <div className="mb-4 p-3 rounded-xl bg-red-950/40 border border-red-500/30 text-xs text-red-300">
+                ⚠️ {formError}
+              </div>
+            )}
+
+            {!isRegisterMode ? (
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                    Registered Mobile Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={loginPhone}
+                    onChange={(e) => setLoginPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
+                    placeholder="0719876543"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-black text-xs shadow-lg hover:opacity-95 transition-all cursor-pointer"
+                >
+                  Access Garage Panel
+                </button>
+
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsRegisterMode(true);
+                      setFormError('');
+                    }}
+                    className="text-xs text-accent-green hover:underline font-semibold cursor-pointer"
+                  >
+                    Need to register a new garage? Click here
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleRegister} className="space-y-3">
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                    Owner Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
+                    placeholder="Priyantha Perera"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                    Garage / Business Name
+                  </label>
+                  <input
+                    type="text"
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
+                    placeholder="Perera Motors & Towing"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                    Mobile Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
+                    placeholder="0771234567"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                    National ID (NIC) Number
+                  </label>
+                  <input
+                    type="text"
+                    value={nic}
+                    onChange={(e) => setNic(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
+                    placeholder="199012345678 or 901234567V"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                    Select Workshop City Region
+                  </label>
+                  <select
+                    value={city}
+                    onChange={(e) => {
+                      const cityName = e.target.value;
+                      setCity(cityName);
+                      const matched = CITIES.find((c) => c.name === cityName);
+                      if (matched) {
+                        setWorkshopCoords([matched.coords[0], matched.coords[1]]);
+                      }
+                    }}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green cursor-pointer mb-2"
+                  >
+                    {CITIES.map((c) => (
+                      <option key={c.name} value={c.name} className="bg-slate-900 text-slate-200">
+                        {c.name} Region
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                    Mark Workshop Location on Map (Drag Pin or Click Map)
+                  </label>
+                  <GarageLocationPickerMap
+                    location={workshopCoords}
+                    onLocationChange={(lat, lng) => setWorkshopCoords([lat, lng])}
+                  />
+                  <div className="mt-1 text-[10px] text-slate-400 flex justify-between font-mono px-1">
+                    <span>Lat: {workshopCoords[0].toFixed(5)}</span>
+                    <span>Lng: {workshopCoords[1].toFixed(5)}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                    Subscription Radius Plan
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTier('Basic')}
+                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${tier === 'Basic'
+                          ? 'border-accent-green bg-accent-green/10 text-emerald-300'
+                          : 'border-slate-800 bg-slate-900 text-slate-400'
+                        }`}
+                    >
+                      <div className="text-xs font-bold">Basic Tier</div>
+                      <div className="text-[9px] text-slate-500">1,500 LKR/mo • 5km</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTier('Premium Pro')}
+                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${tier === 'Premium Pro'
+                          ? 'border-amber-500 bg-amber-500/10 text-amber-300'
+                          : 'border-slate-800 bg-slate-900 text-slate-400'
+                        }`}
+                    >
+                      <div className="text-xs font-bold">Premium Pro</div>
+                      <div className="text-[9px] text-slate-500">5,000 LKR/mo • 25km</div>
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-black text-xs shadow-lg hover:opacity-95 transition-all cursor-pointer mt-2"
+                >
+                  Submit Registration
+                </button>
+
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsRegisterMode(false);
+                      setFormError('');
+                    }}
+                    className="text-xs text-slate-400 hover:underline font-semibold cursor-pointer"
+                  >
+                    Already registered? Back to Login
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Garage Profile Info Header Card */}
+            <div className="glass-panel p-5 rounded-2xl border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-accent-green/15 border border-accent-green/30 text-accent-green flex items-center justify-center text-xl shrink-0">
+                  🏢
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-extrabold text-slate-100">{currentMechanic.businessName || currentMechanic.name}</h2>
+                    {currentMechanic.tier === 'Premium Pro' ? (
+                      <span className="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1">
+                        <Star size={10} className="fill-amber-400 text-amber-400" />
+                        <span>PRO (25km)</span>
+                      </span>
+                    ) : (
+                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[9px] font-bold">
+                        Basic (5km)
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Owner: <strong className="text-slate-200">{currentMechanic.name}</strong> • Phone: <strong className="text-slate-200">{currentMechanic.phone}</strong> • NIC: <strong className="text-slate-200">{currentMechanic.nic}</strong> • Staff: <strong className="text-emerald-400 font-extrabold">{currentMechanic.employees?.length || 0} Technicians</strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* Active Job Capacity Counter Widget */}
+              <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 flex items-center gap-4 shrink-0 w-full md:w-auto justify-between">
+                <div>
+                  <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider block">Active Job Capacity</span>
+                  <div className="text-sm font-extrabold text-slate-100 mt-0.5 flex items-center gap-1.5">
+                    <span className={activeJobCount >= maxCap ? 'text-red-400' : 'text-accent-green'}>
+                      {activeJobCount} / {maxCap}
+                    </span>
+                    <span className="text-xs text-slate-400 font-semibold">Active Jobs</span>
+                  </div>
+                </div>
+                <div className="h-9 w-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-bold text-slate-300">
+                  {Math.round((activeJobCount / maxCap) * 100)}%
+                </div>
+              </div>
+            </div>
+
+            {/* Pending Location Change Request Alert Banner */}
+            {currentMechanic.pendingLocation && (
+              <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
+                    <AlertTriangle size={18} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-amber-300 uppercase tracking-wider">Location Change Request Pending</span>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-bold border border-amber-500/30">Request Pending</span>
+                    </div>
+                    <p className="text-xs text-slate-200 mt-1">
+                      Requested new garage location: <strong className="text-amber-300">{currentMechanic.pendingLocation.city}</strong> (GPS: {currentMechanic.pendingLocation.lat.toFixed(4)}, {currentMechanic.pendingLocation.lng.toFixed(4)})
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      ℹ️ Your current registered location ({currentMechanic.city}) is still active and operational for motorist breakdown dispatch while awaiting Admin approval.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCancelLocationRequest}
+                  className="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-red-500/50 text-slate-300 hover:text-red-400 text-xs font-bold shrink-0 cursor-pointer transition-all"
+                >
+                  Withdraw Request
+                </button>
+              </div>
+            )}
+
+            {/* Desktop Navigation Tabs */}
+            <div className="flex border-b border-slate-850 gap-2">
+              <button
+                onClick={() => setActiveTab('dispatch')}
+                className={`pb-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'dispatch'
+                    ? 'border-accent-green text-accent-green'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                  }`}
+              >
+                <PhoneCall size={14} />
+                <span>Dispatch & Booking Calls</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('roster')}
+                className={`pb-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'roster'
+                    ? 'border-accent-green text-accent-green'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                  }`}
+              >
+                <Users size={14} />
+                <span>Employee Roster ({(currentMechanic.employees || []).length})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`pb-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'settings'
+                    ? 'border-accent-green text-accent-green'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                  }`}
+              >
+                <Lock size={14} />
+                <span>Account & Security</span>
+              </button>
+            </div>
+
+            {/* TAB 1: Dispatch & Booking Calls */}
+            {activeTab === 'dispatch' && (
+              <div className="space-y-6">
+                {/* Incoming Requests Panel */}
+                <div className="glass-panel p-5 rounded-2xl border-slate-800 space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <h3 className="text-xs font-black text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                      <span>Incoming Driver Booking Requests</span>
+                    </h3>
+                    <span className="text-[10px] text-slate-500 font-bold uppercase">
+                      Auto-Radius Filter ({currentMechanic.tier === 'Premium Pro' ? '25km' : '5km'})
+                    </span>
+                  </div>
+
+                  {pendingForThisGarage.length === 0 ? (
+                    <div className="text-center py-10 text-xs text-slate-500 flex flex-col items-center gap-2">
+                      <div className="h-10 w-10 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600">
+                        📡
+                      </div>
+                      <span>Monitoring Sri Lankan road safety network. No pending driver requests...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {pendingForThisGarage.map((inc) => (
+                        <div
+                          key={inc.id}
+                          className="p-4 rounded-xl bg-slate-900 border border-orange-500/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-pulse"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                {inc.category}
+                              </span>
+                              <span className="text-xs font-extrabold text-slate-200">
+                                Fee: {inc.baseTariff.toLocaleString()} LKR
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-1">
+                              Driver: <strong className="text-slate-200">{inc.driverName || 'Motorist'}</strong> • Phone: <strong className="text-slate-200">{inc.driverPhone || '0771234567'}</strong> • Distance: <strong className="text-slate-200">{inc.distanceKm || 2.4} km</strong>
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                            <select
+                              value={selectedDispatchPhone}
+                              onChange={(e) => setSelectedDispatchPhone(e.target.value)}
+                              className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none"
+                            >
+                              <option value="">Auto-Assign Lead Staff</option>
+                              {(currentMechanic.employees || []).map((emp) => (
+                                <option key={emp.id} value={emp.phone}>
+                                  {emp.name} ({emp.role})
+                                </option>
+                              ))}
+                            </select>
+
+                            <button
+                              onClick={() => handleDispatchEmployee(inc.id)}
+                              className="py-2 px-4 rounded-xl bg-gradient-to-r from-accent-orange to-red-600 text-white font-bold text-xs shadow-lg cursor-pointer whitespace-nowrap"
+                            >
+                              Dispatch Technician
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Active Dispatches */}
+                <div className="glass-panel p-5 rounded-2xl border-slate-800 space-y-4">
+                  <h3 className="text-xs font-black text-slate-200 uppercase tracking-wider">
+                    Active Assigned Dispatches ({incidents.filter((i) => String(i.mechanicId) === String(currentMechanic.id) && i.status !== 'Request Sent' && i.status !== 'Resolved' && i.status !== 'Cancelled').length})
+                  </h3>
+
+                  {incidents.filter((i) => String(i.mechanicId) === String(currentMechanic.id) && i.status !== 'Request Sent' && i.status !== 'Resolved' && i.status !== 'Cancelled').length === 0 ? (
+                    <div className="text-center py-8 text-xs text-slate-500">
+                      No active dispatches currently en-route.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {incidents
+                        .filter((i) => String(i.mechanicId) === String(currentMechanic.id) && i.status !== 'Request Sent' && i.status !== 'Resolved' && i.status !== 'Cancelled')
+                        .map((inc) => (
+                          <div key={inc.id} className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex justify-between items-center">
+                            <div>
+                              <span className="text-xs font-bold text-accent-yellow">{inc.category}</span>
+                              <div className="text-xs text-slate-400 mt-1">
+                                Technician: <span className="text-slate-200 font-semibold">{inc.assignedEmployee?.name || currentMechanic.name}</span> ({inc.assignedEmployee?.role || 'Lead Mechanic'})
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                const updated = incidents.map((i) => (i.id === inc.id ? { ...i, status: 'Resolved' as const } : i));
+                                const updatedActiveJobs = Math.max(0, (currentMechanic.activeJobs || 1) - 1);
+                                const updatedMech = { ...currentMechanic, activeJobs: updatedActiveJobs };
+
+                                setIncidents(updated);
+                                setCurrentMechanic(updatedMech);
+                                setMechanics(mechanics.map((m) => (m.id === currentMechanic.id ? updatedMech : m)));
+                              }}
+                              className="py-1.5 px-3 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold cursor-pointer"
+                            >
+                              Resolve & Free Staff
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: Employee Roster Management */}
+            {activeTab === 'roster' && (
+              <div className="glass-panel p-5 rounded-2xl border-slate-800 space-y-4">
+                <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                  <div>
+                    <h3 className="text-xs font-black text-slate-200 uppercase tracking-wider">
+                      Employee Roster Management
+                    </h3>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Manage your garage technicians, towing drivers, and auto electricians for quick assignment.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setEditingEmployee(null);
+                      setEmpName('');
+                      setEmpPhone('');
+                      setEmpRole('General Mechanic');
+                      setIsEmployeeModalOpen(true);
+                    }}
+                    className="py-2 px-3 rounded-xl bg-accent-green text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus size={14} />
+                    <span>Add New Employee</span>
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-[10px] text-slate-500 uppercase tracking-wider">
+                        <th className="py-2.5 px-3">Employee Name</th>
+                        <th className="py-2.5 px-3">Mobile Phone</th>
+                        <th className="py-2.5 px-3">Specialty Title</th>
+                        <th className="py-2.5 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-850 text-slate-200">
+                      {(currentMechanic.employees || []).map((emp) => (
+                        <tr key={emp.id} className="hover:bg-slate-900/50">
+                          <td className="py-3 px-3 font-semibold flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px]">
+                              👤
+                            </div>
+                            <span>{emp.name}</span>
+                          </td>
+                          <td className="py-3 px-3 text-slate-400 font-mono">{emp.phone}</td>
+                          <td className="py-3 px-3">
+                            <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-[10px] font-medium text-slate-300">
+                              {emp.role}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right space-x-2">
+                            <button
+                              onClick={() => {
+                                setEditingEmployee(emp);
+                                setEmpName(emp.name);
+                                setEmpPhone(emp.phone);
+                                setEmpRole(emp.role);
+                                setIsEmployeeModalOpen(true);
+                              }}
+                              className="p-1 text-slate-400 hover:text-slate-100 cursor-pointer"
+                              title="Edit Employee"
+                            >
+                              <Edit size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteEmployee(emp.id)}
+                              className="p-1 text-red-400 hover:text-red-300 cursor-pointer"
+                              title="Delete Employee"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: Account & Security */}
+            {activeTab === 'settings' && (
+              <div className="glass-panel p-5 rounded-2xl border-slate-800 space-y-6">
+                <div>
+                  <h3 className="text-xs font-black text-slate-200 uppercase tracking-wider mb-1">
+                    Account Security & Credentials
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Update your garage owner login password or verify your registered mobile number via Mobile OTP.
+                  </p>
+                </div>
+
+                {settingsSuccess && (
+                  <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-300">
+                    ✅ {settingsSuccess}
+                  </div>
+                )}
+
+                <form onSubmit={handleUpdatePassword} className="max-w-md space-y-3">
+                  <div>
+                    <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      value={settingsPassword}
+                      onChange={(e) => setSettingsPassword(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
+                      placeholder="Enter new password"
+                      required
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="py-2.5 px-4 rounded-xl bg-accent-green text-slate-950 font-bold text-xs cursor-pointer"
+                  >
+                    Update Password
+                  </button>
+                </form>
+
+                <div className="border-t border-slate-800 pt-5 max-w-md">
+                  <h4 className="text-xs font-bold text-slate-200 mb-1">Mobile OTP Verification Reset</h4>
+                  <p className="text-xs text-slate-400 mb-3">
+                    Re-verify registered mobile number ({currentMechanic.phone}) via SMS verification code.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setOtpModalOpen(true);
+                      handleSendMobileOtp();
+                    }}
+                    className="py-2.5 px-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 font-bold text-xs flex items-center gap-2 cursor-pointer"
+                  >
+                    <Smartphone size={14} />
+                    <span>Send Mobile Security OTP</span>
+                  </button>
+                </div>
+
+                {/* Garage Workshop Location Management */}
+                <div className="border-t border-slate-800 pt-6">
+                  <div className="mb-4">
+                    <h4 className="text-xs font-black text-slate-200 uppercase tracking-wider mb-1 flex items-center gap-2">
+                      <MapPin size={15} className="text-accent-green" />
+                      <span>Garage Location & Address Management</span>
+                    </h4>
+                    <p className="text-xs text-slate-400">
+                      Submit a request to change your current registered workshop location. Once requested, your current location stays active until Admin reviews and approves the update.
+                    </p>
+                  </div>
+
+                  {locChangeSuccess && (
+                    <div className="p-3 mb-4 rounded-xl bg-amber-950/40 border border-amber-500/30 text-xs text-amber-300">
+                      {locChangeSuccess}
+                    </div>
+                  )}
+
+                  {/* Current Active Location Card */}
+                  <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 mb-4 max-w-xl">
+                    <div className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider mb-1">
+                      Currently Active Operational Location
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-extrabold text-slate-100 flex items-center gap-2">
+                          <span>{currentMechanic.city}</span>
+                          <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                            Live on Motorist Map
+                          </span>
+                        </div>
+                        <div className="text-xs font-mono text-cyan-400 mt-1">
+                          GPS Coords: {currentMechanic.lat ? currentMechanic.lat.toFixed(4) : '6.9271'}, {currentMechanic.lng ? currentMechanic.lng.toFixed(4) : '79.8612'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pending Request Status Box OR Form to Request New Location */}
+                  {currentMechanic.pendingLocation ? (
+                    <div className="p-4 rounded-xl bg-amber-950/30 border border-amber-500/40 max-w-xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle size={16} className="text-amber-400" />
+                          <span className="text-xs font-extrabold text-amber-300 uppercase tracking-wider">
+                            Location Change Request Pending
+                          </span>
+                        </div>
+                        <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-extrabold">
+                          Request Pending
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-300">
+                        You have requested to change garage location to <strong className="text-amber-300">{currentMechanic.pendingLocation.city}</strong> (GPS: {currentMechanic.pendingLocation.lat.toFixed(4)}, {currentMechanic.pendingLocation.lng.toFixed(4)}).
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Submitted on: {currentMechanic.pendingLocation.requestedAt}. Your active location remains <strong>{currentMechanic.city}</strong> for motorist search until Admin approves.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleCancelLocationRequest}
+                        className="py-2 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-red-400 text-xs font-bold cursor-pointer"
+                      >
+                        Cancel / Withdraw Location Request
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleRequestLocationChange} className="max-w-xl space-y-4 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+                      <div className="text-xs font-bold text-slate-200">Request New Workshop Location</div>
+
+                      <div>
+                        <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                          Select City / Region
+                        </label>
+                        <select
+                          value={newLocCity}
+                          onChange={(e) => {
+                            const c = e.target.value;
+                            setNewLocCity(c);
+                            const found = CITIES.find((ci) => ci.name === c);
+                            if (found) setNewLocCoords(found.coords);
+                          }}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
+                        >
+                          {CITIES.map((c) => (
+                            <option key={c.name} value={c.name}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                          Pin Point Workshop Location on Map
+                        </label>
+                        <GarageLocationPickerMap
+                          location={newLocCoords}
+                          onLocationChange={(lat: number, lng: number) => setNewLocCoords([lat, lng])}
+                        />
+                        <div className="flex justify-between text-[10px] font-mono text-cyan-400 mt-1">
+                          <span>Lat: {newLocCoords[0].toFixed(5)}</span>
+                          <span>Lng: {newLocCoords[1].toFixed(5)}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-2.5 px-4 rounded-xl bg-accent-green hover:bg-emerald-600 text-slate-950 font-extrabold text-xs cursor-pointer shadow-md transition-all"
+                      >
+                        Submit Location Change Request to Admin
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* Employee CRUD Modal */}
+      {isEmployeeModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/80 z-[1200] flex items-center justify-center p-4">
+          <div className="glass-panel p-6 rounded-2xl max-w-md w-full border-slate-800 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-slate-100">
+                {editingEmployee ? 'Edit Employee Details' : 'Add New Employee to Roster'}
+              </h3>
+              <button
+                onClick={() => setIsEmployeeModalOpen(false)}
+                className="text-slate-400 hover:text-slate-200 cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEmployee} className="space-y-3">
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={empName}
+                  onChange={(e) => setEmpName(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
+                  placeholder="Kamal Perera"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                  Mobile Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={empPhone}
+                  onChange={(e) => setEmpPhone(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
+                  placeholder="0712223334"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                  Specialty Role Title
+                </label>
+                <select
+                  value={empRole}
+                  onChange={(e) => setEmpRole(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
+                >
+                  <option value="Tire & Recovery Specialist">Tire & Recovery Specialist</option>
+                  <option value="Engine Technician">Engine Technician</option>
+                  <option value="Auto Electrician">Auto Electrician</option>
+                  <option value="Flatbed Driver">Flatbed Driver</option>
+                  <option value="General Mechanic">General Mechanic</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEmployeeModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-300 text-xs font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-accent-green text-slate-950 text-xs font-bold cursor-pointer"
+                >
+                  Save Employee
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Simulated SMS Dispatch Notification Modal */}
+      {simulatedSmsPopup && (
+        <div className="fixed inset-0 bg-slate-950/80 z-[1300] flex items-center justify-center p-4">
+          <div className="glass-panel p-5 rounded-2xl max-w-sm w-full border-slate-800 space-y-3">
+            <div className="flex items-center gap-2 text-accent-green border-b border-slate-800 pb-2">
+              <Smartphone size={18} />
+              <span className="text-xs font-extrabold uppercase tracking-wider">SMS Dispatch Alert Simulator</span>
+            </div>
+
+            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 text-xs space-y-1.5">
+              <div className="text-[10px] text-slate-500 font-bold uppercase">To Employee Mobile</div>
+              <div className="font-extrabold text-slate-200">{simulatedSmsPopup.employeeName} ({simulatedSmsPopup.employeePhone})</div>
+              <div className="text-[11px] text-slate-300 bg-slate-950 p-2 rounded-lg border border-slate-850 mt-2 font-mono">
+                [RouteRescue LK ALERT]: New dispatch assigned. Category: {simulatedSmsPopup.category}. GPS: {simulatedSmsPopup.lat.toFixed(4)}, {simulatedSmsPopup.lng.toFixed(4)}. Tariff Fee: {simulatedSmsPopup.fee.toLocaleString()} LKR. Proceed immediately.
+              </div>
+            </div>
+
+            <button
+              onClick={() => setSimulatedSmsPopup(null)}
+              className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold cursor-pointer"
+            >
+              Close SMS Alert
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Security OTP Modal */}
+      {otpModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/80 z-[1300] flex items-center justify-center p-4">
+          <div className="glass-panel p-5 rounded-2xl max-w-sm w-full border-slate-800 space-y-3">
+            <div className="text-xs font-bold text-slate-200">Mobile Security OTP Verification</div>
+            <p className="text-[11px] text-slate-400">
+              Enter the 4-digit security code sent to {currentMechanic?.phone} (Simulated OTP: <strong>1234</strong>).
+            </p>
+
+            <input
+              type="text"
+              maxLength={4}
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value)}
+              className="w-full px-3 py-2 text-center text-lg font-mono tracking-widest rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:outline-none"
+              placeholder="1234"
+            />
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setOtpModalOpen(false)}
+                className="flex-1 py-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-300 text-xs font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleVerifyMobileOtp}
+                className="flex-1 py-2 rounded-xl bg-accent-green text-slate-950 text-xs font-bold"
+              >
+                Verify Code
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
