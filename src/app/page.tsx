@@ -15,8 +15,8 @@ export default function LandingPage() {
 
   const handleAdminVerify = (e: React.FormEvent) => {
     e.preventDefault();
-    const validPasscode = adminSettings?.passcode || '1234';
-    if (passcode === validPasscode || passcode === '1234') {
+    const validPasscode = adminSettings?.passcode;
+    if (validPasscode && passcode.trim() === String(validPasscode).trim()) {
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('admin_verified', 'true');
       }
@@ -186,7 +186,7 @@ export default function LandingPage() {
                 <div className="bg-slate-900/50 p-2.5 rounded-xl border border-slate-850 flex items-start gap-2">
                   <Info size={14} className="text-slate-500 shrink-0 mt-0.5" />
                   <p className="text-[9px] leading-normal text-slate-500">
-                    Use passcode <code className="text-amber-500 font-semibold">{adminSettings?.passcode || '1234'}</code> to enter. Admin panel oversees subscriber credentials and platform maps.
+                    Enter your authorized administrator security passcode to unlock system operations.
                   </p>
                 </div>
 
