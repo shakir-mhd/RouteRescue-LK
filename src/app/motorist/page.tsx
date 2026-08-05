@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Phone, ArrowLeft, Key, User, Lock, FileText, MapPin, Compass } from 'lucide-react';
+import { Phone, ArrowLeft, Key, User, Lock, FileText, MapPin, Compass, LogOut } from 'lucide-react';
 import { useSharedState, Incident, Mechanic, Driver, SEED_MECHANICS, calculateDistanceKm } from '../../utils/store';
 import MapDashboard from '../../components/MapDashboard';
 import TriageDrawer from '../../components/TriageDrawer';
@@ -258,6 +258,18 @@ export default function MotoristPortal() {
       localStorage.setItem('motorist_logged_in', 'true');
       localStorage.setItem('motorist_phone', phone);
       localStorage.setItem('motorist_name', matched?.name || 'Driver');
+    }
+  };
+
+  const handleDriverLogout = () => {
+    setIsLoggedIn(false);
+    setDriverName('');
+    setPhone('');
+    setPassword('');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('motorist_logged_in');
+      localStorage.removeItem('motorist_phone');
+      localStorage.removeItem('motorist_name');
     }
   };
 
@@ -714,10 +726,18 @@ export default function MotoristPortal() {
               </span>
             )}
 
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold text-slate-400 bg-slate-900 px-2.5 py-1 rounded-full border border-slate-800">
-                {driverName}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-slate-200 bg-slate-900/90 px-3 py-1 rounded-full border border-slate-800 flex items-center gap-1">
+                <span>👤 {driverName}</span>
               </span>
+              <button
+                onClick={handleDriverLogout}
+                className="flex items-center gap-1 text-[10px] font-bold text-red-400 hover:text-red-300 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 px-2.5 py-1 rounded-full transition-all cursor-pointer shadow-sm active:scale-95"
+                title="Log Out of Driver Account"
+              >
+                <LogOut size={11} />
+                <span>Log Out</span>
+              </button>
             </div>
           </header>
 
