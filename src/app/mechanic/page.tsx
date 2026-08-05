@@ -716,7 +716,7 @@ export default function MechanicPortal() {
                   >
                     {CITIES.map((c) => (
                       <option key={c.name} value={c.name} className="bg-slate-900 text-slate-200">
-                        {c.name} Region
+                        {c.name}
                       </option>
                     ))}
                   </select>
