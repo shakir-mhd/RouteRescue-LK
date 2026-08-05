@@ -4,24 +4,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Phone, ArrowLeft, Key, User, Lock, FileText, MapPin, Compass, LogOut } from 'lucide-react';
-import { useSharedState, Incident, Mechanic, Driver, SEED_MECHANICS, calculateDistanceKm } from '../../utils/store';
+import { useSharedState, Incident, Mechanic, Driver, SEED_MECHANICS, calculateDistanceKm, SRI_LANKA_REGIONS } from '../../utils/store';
 import MapDashboard from '../../components/MapDashboard';
 import TriageDrawer from '../../components/TriageDrawer';
 import LiveTracker from '../../components/LiveTracker';
 
-const CITIES = [
-  { name: 'Ratnapura City', coords: [6.6828, 80.4014] as [number, number] },
-  { name: 'Colombo Region', coords: [6.9271, 79.8612] as [number, number] },
-  { name: 'SLTC Padukka Campus', coords: [6.8524, 80.0934] as [number, number] },
-  { name: 'Malabe / Kaduwela', coords: [6.9061, 79.9647] as [number, number] },
-  { name: 'Kandy Region', coords: [7.2906, 80.6337] as [number, number] },
-  { name: 'Galle Highway', coords: [6.0535, 80.2210] as [number, number] },
-  { name: 'Jaffna Town', coords: [9.6615, 80.0255] as [number, number] },
-  { name: 'Negombo Coastal', coords: [7.2008, 79.8737] as [number, number] },
-  { name: 'Kurunegala Junction', coords: [7.4863, 80.3647] as [number, number] },
-  { name: 'Matara Southern', coords: [5.9549, 80.5550] as [number, number] },
-  { name: 'Nuwara Eliya', coords: [6.9497, 80.7891] as [number, number] },
-];
+const CITIES = SRI_LANKA_REGIONS.map((r) => ({
+  name: r.name,
+  coords: r.coords as [number, number],
+}));
 
 function findNearestCity(coords: [number, number]) {
   let closest = CITIES[0];

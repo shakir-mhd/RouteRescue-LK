@@ -112,6 +112,42 @@ export const DEFAULT_PLANS: SubscriptionPlan[] = [
   },
 ];
 
+export interface SriLankanRegion {
+  name: string;
+  coords: [number, number];
+}
+
+export const SRI_LANKA_REGIONS: SriLankanRegion[] = [
+  { name: 'Colombo Region', coords: [6.9271, 79.8612] },
+  { name: 'Gampaha Region', coords: [7.0840, 79.9930] },
+  { name: 'Kalutara Region', coords: [6.5854, 79.9607] },
+  { name: 'Kandy Region', coords: [7.2906, 80.6337] },
+  { name: 'Matale Region', coords: [7.4675, 80.6234] },
+  { name: 'Nuwara Eliya Region', coords: [6.9497, 80.7891] },
+  { name: 'Galle Region', coords: [6.0535, 80.2210] },
+  { name: 'Matara Region', coords: [5.9549, 80.5550] },
+  { name: 'Hambantota Region', coords: [6.1247, 81.1185] },
+  { name: 'Jaffna Region', coords: [9.6615, 80.0255] },
+  { name: 'Kilinochchi Region', coords: [9.3803, 80.3770] },
+  { name: 'Mannar Region', coords: [8.9810, 79.9044] },
+  { name: 'Vavuniya Region', coords: [8.7542, 80.4982] },
+  { name: 'Mullaitivu Region', coords: [9.2671, 80.8142] },
+  { name: 'Batticaloa Region', coords: [7.7310, 81.6747] },
+  { name: 'Ampara Region', coords: [7.2912, 81.6724] },
+  { name: 'Trincomalee Region', coords: [8.5874, 81.2152] },
+  { name: 'Kurunegala Region', coords: [7.4863, 80.3647] },
+  { name: 'Puttalam Region', coords: [8.0362, 79.8283] },
+  { name: 'Anuradhapura Region', coords: [8.3114, 80.4037] },
+  { name: 'Polonnaruwa Region', coords: [7.9403, 81.0188] },
+  { name: 'Badulla Region', coords: [6.9934, 81.0550] },
+  { name: 'Monaragala Region', coords: [6.8718, 81.3487] },
+  { name: 'Ratnapura Region', coords: [6.6828, 80.4014] },
+  { name: 'Kegalle Region', coords: [7.2513, 80.3464] },
+  { name: 'Negombo Region', coords: [7.2008, 79.8737] },
+  { name: 'SLTC Padukka Campus', coords: [6.8524, 80.0934] },
+  { name: 'Malabe / Kaduwela', coords: [6.9061, 79.9647] },
+];
+
 export const SEED_MECHANICS: Mechanic[] = [];
 
 export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | ((prev: T) => T)) => void] {

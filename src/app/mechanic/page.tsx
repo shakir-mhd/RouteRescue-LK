@@ -24,7 +24,7 @@ import {
   MapPin,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest } from '@/utils/store';
+import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS } from '@/utils/store';
 
 const GarageLocationPickerMap = dynamic(() => import('../../components/GarageLocationPickerInner'), {
   ssr: false,
@@ -35,17 +35,10 @@ const GarageLocationPickerMap = dynamic(() => import('../../components/GarageLoc
   ),
 });
 
-const CITIES = [
-  { name: 'Colombo', coords: [6.9271, 79.8612] as [number, number] },
-  { name: 'Ratnapura', coords: [6.6828, 80.4014] as [number, number] },
-  { name: 'Kandy', coords: [7.2906, 80.6337] as [number, number] },
-  { name: 'Galle', coords: [6.0535, 80.2210] as [number, number] },
-  { name: 'Nuwara Eliya', coords: [6.9497, 80.7891] as [number, number] },
-  { name: 'Jaffna', coords: [9.6615, 80.0255] as [number, number] },
-  { name: 'Negombo', coords: [7.2008, 79.8737] as [number, number] },
-  { name: 'Kurunegala', coords: [7.4863, 80.3647] as [number, number] },
-  { name: 'Matara', coords: [5.9549, 80.5550] as [number, number] },
-];
+const CITIES = SRI_LANKA_REGIONS.map((r) => ({
+  name: r.name,
+  coords: r.coords as [number, number],
+}));
 
 interface Employee {
   id: string | number;
