@@ -191,7 +191,25 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             if (error) console.error('Supabase drivers upsert error:', error);
           });
         } else if (key === 'routerescue_mechanics' && Array.isArray(valueToStore)) {
-          supabase.from('mechanics').upsert(valueToStore).then(({ error }) => {
+          const payload = valueToStore.map((m: any) => ({
+            id: String(m.id),
+            name: m.name,
+            phone: m.phone,
+            nic: m.nic || '',
+            password: m.password || '',
+            city: m.city || 'Colombo',
+            lat: Number(m.lat) || 6.9271,
+            lng: Number(m.lng) || 79.8612,
+            tier: m.tier || 'Basic',
+            radius: Number(m.radius) || 5,
+            status: m.status || 'Pending',
+            business_name: m.businessName || m.business_name || m.name,
+            is_available: typeof m.isAvailable === 'boolean' ? m.isAvailable : true,
+            active_jobs: Number(m.activeJobs || m.active_jobs || 0),
+            max_capacity: Number(m.maxCapacity || m.max_capacity || 3),
+            employees: Array.isArray(m.employees) ? m.employees : [],
+          }));
+          supabase.from('mechanics').upsert(payload).then(({ error }) => {
             if (error) console.error('Supabase mechanics upsert error:', error);
           });
         } else if (key === 'routerescue_incidents' && Array.isArray(valueToStore)) {
@@ -268,8 +286,27 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
           } else if (key === 'routerescue_mechanics') {
             const { data } = await supabase.from('mechanics').select('*');
             if (data) {
-              setState(data as unknown as T);
-              window.localStorage.setItem(key, JSON.stringify(data));
+              const mapped = data.map((m: any) => ({
+                id: m.id,
+                name: m.name,
+                phone: m.phone,
+                nic: m.nic,
+                password: m.password,
+                city: m.city,
+                lat: Number(m.lat),
+                lng: Number(m.lng),
+                tier: m.tier,
+                radius: Number(m.radius),
+                status: m.status,
+                businessName: m.business_name || m.businessName || m.name,
+                isAvailable: typeof m.is_available === 'boolean' ? m.is_available : true,
+                activeJobs: Number(m.active_jobs || m.activeJobs || 0),
+                maxCapacity: Number(m.max_capacity || m.maxCapacity || 3),
+                employees: Array.isArray(m.employees) ? m.employees : [],
+                pendingLocation: m.pending_location || m.pendingLocation || undefined,
+              }));
+              setState(mapped as unknown as T);
+              window.localStorage.setItem(key, JSON.stringify(mapped));
             }
           } else if (key === 'routerescue_incidents') {
             const { data } = await supabase.from('incidents').select('*');
