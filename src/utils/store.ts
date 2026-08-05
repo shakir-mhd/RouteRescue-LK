@@ -349,6 +349,22 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(key, JSON.stringify(valueToStore));
         window.dispatchEvent(new Event('local-storage-sync'));
+
+        // Asynchronously sync with Supabase Cloud Database
+        if (key === 'routerescue_drivers' && Array.isArray(valueToStore)) {
+          const payload = valueToStore.map((d: any) => ({
+            id: String(d.id),
+            name: d.name,
+            phone: d.mobile || d.phone,
+            nic: d.nic,
+            password: d.password,
+          }));
+          supabase.from('drivers').upsert(payload).then(() => {});
+        } else if (key === 'routerescue_mechanics' && Array.isArray(valueToStore)) {
+          supabase.from('mechanics').upsert(valueToStore).then(() => {});
+        } else if (key === 'routerescue_incidents' && Array.isArray(valueToStore)) {
+          supabase.from('incidents').upsert(valueToStore).then(() => {});
+        }
       }
     } catch (error) {
       console.error('Error setting localStorage key', key, error);
@@ -369,6 +385,45 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
 
     window.addEventListener('storage', handleSync);
     window.addEventListener('local-storage-sync', handleSync);
+
+    // Initial fetch from Supabase
+    if (typeof window !== 'undefined') {
+      const fetchSupabase = async () => {
+        try {
+          if (key === 'routerescue_drivers') {
+            const { data } = await supabase.from('drivers').select('*');
+            if (data && data.length > 0) {
+              const mapped = data.map((d: any) => ({
+                id: d.id,
+                name: d.name,
+                mobile: d.phone,
+                nic: d.nic,
+                password: d.password,
+              }));
+              setState(mapped as unknown as T);
+              window.localStorage.setItem(key, JSON.stringify(mapped));
+            }
+          } else if (key === 'routerescue_mechanics') {
+            const { data } = await supabase.from('mechanics').select('*');
+            if (data && data.length > 0) {
+              setState(data as unknown as T);
+              window.localStorage.setItem(key, JSON.stringify(data));
+            }
+          } else if (key === 'routerescue_incidents') {
+            const { data } = await supabase.from('incidents').select('*');
+            if (data && data.length > 0) {
+              setState(data as unknown as T);
+              window.localStorage.setItem(key, JSON.stringify(data));
+            }
+          }
+        } catch (e) {
+          console.error('Supabase fetch error', e);
+        }
+      };
+
+      fetchSupabase();
+    }
+
     return () => {
       window.removeEventListener('storage', handleSync);
       window.removeEventListener('local-storage-sync', handleSync);
