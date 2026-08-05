@@ -8,7 +8,7 @@ import {
   Building2, Users, Settings, Eye, RefreshCw, X, AlertTriangle, FileText,
   Calendar, Trash2, CheckCircle, Phone, Clock, ShieldCheck, MapPin, ExternalLink
 } from 'lucide-react';
-import { useSharedState, Incident, Mechanic, SEED_MECHANICS, DEFAULT_ADMIN_SETTINGS, AdminSettings } from '../../utils/store';
+import { useSharedState, Incident, Mechanic, SEED_MECHANICS, DEFAULT_ADMIN_SETTINGS, AdminSettings, SubscriptionPlan, DEFAULT_PLANS } from '../../utils/store';
 import dynamic from 'next/dynamic';
 
 const MapInner = dynamic(() => import('../../components/MapInner'), {
@@ -45,12 +45,71 @@ export default function SuperAdminDashboard() {
   const [incidents, setIncidents] = useSharedState<Incident[]>('routerescue_incidents', []);
   const [mechanics, setMechanics] = useSharedState<Mechanic[]>('routerescue_mechanics', SEED_MECHANICS);
   const [adminSettings, setAdminSettings] = useSharedState<AdminSettings>('routerescue_admin_settings', DEFAULT_ADMIN_SETTINGS);
+  const [plans, setPlans] = useSharedState<SubscriptionPlan[]>('routerescue_plans', DEFAULT_PLANS);
+
+  // Subscription Plan Form State
+  const [newPlanName, setNewPlanName] = useState('');
+  const [newPlanPrice, setNewPlanPrice] = useState(3000);
+  const [newPlanRadius, setNewPlanRadius] = useState(15);
+  const [newPlanFeature, setNewPlanFeature] = useState('');
+  const [newPlanFeatures, setNewPlanFeatures] = useState<string[]>([]);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
   // Tariff & Passcode Settings Forms
   const [newPasscode, setNewPasscode] = useState(adminSettings?.passcode || '1234');
   const [flatRate, setFlatRate] = useState(adminSettings?.flatRate || 1000);
   const [perKmRate, setPerKmRate] = useState(adminSettings?.perKmRate || 150);
   const [settingsMessage, setSettingsMessage] = useState('');
+
+  const handleSavePlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPlanName.trim()) return;
+
+    if (editingPlanId) {
+      const updated = plans.map((p) =>
+        p.id === editingPlanId
+          ? { ...p, name: newPlanName.trim(), price: Number(newPlanPrice), radius: Number(newPlanRadius), features: newPlanFeatures }
+          : p
+      );
+      setPlans(updated);
+      setEditingPlanId(null);
+    } else {
+      const planObj: SubscriptionPlan = {
+        id: `plan-${Date.now()}`,
+        name: newPlanName.trim(),
+        price: Number(newPlanPrice),
+        radius: Number(newPlanRadius),
+        features: newPlanFeatures.length > 0 ? newPlanFeatures : [`${newPlanRadius}km Dispatch Radius`],
+      };
+      setPlans([...plans, planObj]);
+    }
+
+    setNewPlanName('');
+    setNewPlanPrice(3000);
+    setNewPlanRadius(15);
+    setNewPlanFeatures([]);
+  };
+
+  const handleEditPlan = (p: SubscriptionPlan) => {
+    setEditingPlanId(p.id);
+    setNewPlanName(p.name);
+    setNewPlanPrice(p.price);
+    setNewPlanRadius(p.radius);
+    setNewPlanFeatures(p.features || []);
+  };
+
+  const handleDeletePlan = (planId: string) => {
+    if (confirm('Are you sure you want to delete this subscription plan?')) {
+      setPlans(plans.filter((p) => p.id !== planId));
+    }
+  };
+
+  const handleAddFeature = () => {
+    if (newPlanFeature.trim()) {
+      setNewPlanFeatures([...newPlanFeatures, newPlanFeature.trim()]);
+      setNewPlanFeature('');
+    }
+  };
 
   // Emergency Cancel Breakdown Booking Action
   const handleAdminCancelIncident = (incidentId: string) => {
@@ -1079,25 +1138,109 @@ export default function SuperAdminDashboard() {
               </button>
             </form>
 
-            {/* Mock Dataset Reset */}
-            <div className="glass-panel p-5 rounded-2xl border-slate-800 space-y-4 flex flex-col justify-between">
-              <div>
-                <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-                  <RefreshCw size={16} className="text-amber-400" />
-                  <span>Mock Dataset Reset Control</span>
-                </h3>
-                <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                  Reset system state back to the pre-seeded dataset of Sri Lankan city garages (Colombo, Kandy, Galle, Ratnapura, Jaffna) with default employee rosters.
-                </p>
+            {/* SUBSCRIPTION PLANS CONFIGURATOR */}
+            <div className="glass-panel p-5 rounded-2xl border-slate-800 space-y-4">
+              <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                <CreditCard size={16} className="text-amber-400" />
+                <span>Subscription Plans & Tiers Configurator</span>
+              </h3>
+
+              {/* Plans List */}
+              <div className="space-y-2">
+                {plans.map((p) => (
+                  <div key={p.id} className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
+                    <div>
+                      <div className="font-bold text-slate-100 flex items-center gap-2">
+                        <span>{p.name}</span>
+                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-mono font-bold">
+                          {p.price.toLocaleString()} LKR/mo
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        {p.radius}km Dispatch Radius • {p.features?.length || 0} features
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => handleEditPlan(p)}
+                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold rounded-lg cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeletePlan(p.id)}
+                        className="px-2.5 py-1 bg-red-950/40 hover:bg-red-900/60 text-red-400 text-[10px] font-bold rounded-lg border border-red-500/30 cursor-pointer"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              <button
-                onClick={handleResetMockDataset}
-                className="w-full py-2.5 px-4 rounded-xl border border-red-500/30 bg-red-950/10 hover:bg-red-950/30 text-red-400 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <RefreshCw size={14} />
-                <span>Reset System Mock Dataset</span>
-              </button>
+              {/* Add/Edit Plan Form */}
+              <form onSubmit={handleSavePlan} className="pt-3 border-t border-slate-850 space-y-3">
+                <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                  {editingPlanId ? 'Edit Subscription Plan' : 'Create New Subscription Plan'}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[9px] text-slate-400 uppercase font-bold block mb-1">Plan Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Enterprise Pro"
+                      value={newPlanName}
+                      onChange={(e) => setNewPlanName(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] text-slate-400 uppercase font-bold block mb-1">Price (LKR/mo)</label>
+                    <input
+                      type="number"
+                      required
+                      value={newPlanPrice}
+                      onChange={(e) => setNewPlanPrice(Number(e.target.value))}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] text-slate-400 uppercase font-bold block mb-1">Dispatch Radius (km)</label>
+                    <input
+                      type="number"
+                      required
+                      value={newPlanRadius}
+                      onChange={(e) => setNewPlanRadius(Number(e.target.value))}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="submit"
+                    className="flex-1 py-2 px-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs rounded-xl cursor-pointer transition-all shadow-md"
+                  >
+                    {editingPlanId ? 'Update Subscription Plan' : 'Add New Subscription Plan'}
+                  </button>
+                  {editingPlanId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingPlanId(null);
+                        setNewPlanName('');
+                        setNewPlanPrice(3000);
+                        setNewPlanRadius(15);
+                      }}
+                      className="px-3 py-2 bg-slate-800 text-slate-300 font-bold text-xs rounded-xl cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </form>
             </div>
           </div>
         )}

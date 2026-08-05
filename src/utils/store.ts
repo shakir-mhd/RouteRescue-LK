@@ -81,11 +81,36 @@ export interface AdminSettings {
   perKmRate: number;
 }
 
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: number;
+  radius: number;
+  features: string[];
+}
+
 export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
   passcode: '1234',
   flatRate: 1000,
   perKmRate: 150,
 };
+
+export const DEFAULT_PLANS: SubscriptionPlan[] = [
+  {
+    id: 'plan-basic',
+    name: 'Basic',
+    price: 1500,
+    radius: 5,
+    features: ['5km Dispatch Radius', '1 Active Emergency Job', 'Standard Directory Listing'],
+  },
+  {
+    id: 'plan-pro',
+    name: 'Premium Pro',
+    price: 5000,
+    radius: 25,
+    features: ['25km Dispatch Radius', 'Unlimited Active Jobs', 'Priority Triage Banner', 'Fleet Analytics'],
+  },
+];
 
 export const SEED_MECHANICS: Mechanic[] = [];
 
@@ -94,6 +119,14 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
     if (typeof window === 'undefined') return initialValue;
     try {
       const item = window.localStorage.getItem(key);
+      if (item && key === 'routerescue_mechanics') {
+        const parsed = JSON.parse(item);
+        if (Array.isArray(parsed) && parsed.some((p: any) => p.name === 'Silva Auto Care' || p.name === 'Lanka Fleet & Heavy Towing')) {
+          // Purge stale pre-seeded local storage mechanics
+          window.localStorage.removeItem(key);
+          return [] as unknown as T;
+        }
+      }
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
       console.error('Error reading localStorage key', key, error);
@@ -131,6 +164,15 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             per_km_rate: (valueToStore as any).perKmRate,
           };
           supabase.from('admin_settings').upsert(payload).then(() => {});
+        } else if (key === 'routerescue_plans' && Array.isArray(valueToStore)) {
+          const payload = valueToStore.map((p: any) => ({
+            id: String(p.id),
+            name: p.name,
+            price: p.price,
+            radius: p.radius,
+            features: p.features || [],
+          }));
+          supabase.from('subscription_plans').upsert(payload).then(() => {});
         }
       }
     } catch (error) {
@@ -159,7 +201,7 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
         try {
           if (key === 'routerescue_drivers') {
             const { data } = await supabase.from('drivers').select('*');
-            if (data && data.length > 0) {
+            if (data) {
               const mapped = data.map((d: any) => ({
                 id: d.id,
                 name: d.name,
@@ -172,13 +214,13 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             }
           } else if (key === 'routerescue_mechanics') {
             const { data } = await supabase.from('mechanics').select('*');
-            if (data && data.length > 0) {
+            if (data) {
               setState(data as unknown as T);
               window.localStorage.setItem(key, JSON.stringify(data));
             }
           } else if (key === 'routerescue_incidents') {
             const { data } = await supabase.from('incidents').select('*');
-            if (data && data.length > 0) {
+            if (data) {
               setState(data as unknown as T);
               window.localStorage.setItem(key, JSON.stringify(data));
             }
@@ -191,6 +233,19 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
                 flatRate: Number(s.flat_rate),
                 perKmRate: Number(s.per_km_rate),
               };
+              setState(mapped as unknown as T);
+              window.localStorage.setItem(key, JSON.stringify(mapped));
+            }
+          } else if (key === 'routerescue_plans') {
+            const { data } = await supabase.from('subscription_plans').select('*');
+            if (data && data.length > 0) {
+              const mapped: SubscriptionPlan[] = data.map((p: any) => ({
+                id: p.id,
+                name: p.name,
+                price: Number(p.price),
+                radius: Number(p.radius),
+                features: Array.isArray(p.features) ? p.features : [],
+              }));
               setState(mapped as unknown as T);
               window.localStorage.setItem(key, JSON.stringify(mapped));
             }
