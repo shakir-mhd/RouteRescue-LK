@@ -422,7 +422,7 @@ export default function SuperAdminDashboard() {
             </div>
             <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-850 text-left text-[9px] text-slate-500 flex items-start gap-2">
               <Info size={16} className="text-slate-500 shrink-0 mt-0.5" />
-              <span>Enter your administrative security passcode configured in your Supabase database.</span>
+              <span>Use passcode <code className="text-amber-500 font-semibold">1234</code> to enter. Admin panel oversees subscriber credentials and platform maps.</span>
             </div>
             <button
               type="submit"
