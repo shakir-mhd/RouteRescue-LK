@@ -268,21 +268,37 @@ export default function SuperAdminDashboard() {
     setSettingsMessage('Saving settings to database...');
 
     try {
-      const { error } = await supabase.from('admin_settings').upsert({
-        id: 1,
-        passcode: newPasscode,
-        flat_rate: Number(flatRate),
-        per_km_rate: Number(perKmRate),
-      });
+      const { data: existing } = await supabase.from('admin_settings').select('*');
+      let result;
+      if (existing && existing.length > 0) {
+        result = await supabase
+          .from('admin_settings')
+          .update({
+            passcode: newPasscode,
+            flat_rate: Number(flatRate),
+            per_km_rate: Number(perKmRate),
+          })
+          .eq('id', existing[0].id);
+      } else {
+        result = await supabase.from('admin_settings').insert([
+          {
+            id: 1,
+            passcode: newPasscode,
+            flat_rate: Number(flatRate),
+            per_km_rate: Number(perKmRate),
+          },
+        ]);
+      }
 
-      if (error) {
-        console.error('Supabase admin_settings error:', error);
-        setSettingsMessage(`⚠️ Database update note: ${error.message}`);
+      if (result.error) {
+        console.error('Supabase admin_settings error:', result.error);
+        setSettingsMessage(`⚠️ Database error: ${result.error.message}`);
       } else {
         setSettingsMessage('✅ Settings and Base Tariff Rates saved to database & live system!');
       }
     } catch (err: any) {
       console.error('Error updating admin_settings:', err);
+      setSettingsMessage(`⚠️ Error: ${err.message || 'Failed to update database'}`);
     }
   };
 

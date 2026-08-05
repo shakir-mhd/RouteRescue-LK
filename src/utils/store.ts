@@ -164,13 +164,20 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
           });
         } else if (key === 'routerescue_admin_settings' && valueToStore) {
           const payload = {
-            id: 1,
             passcode: (valueToStore as any).passcode,
             flat_rate: (valueToStore as any).flatRate,
             per_km_rate: (valueToStore as any).perKmRate,
           };
-          supabase.from('admin_settings').upsert(payload).then(({ error }) => {
-            if (error) console.error('Supabase admin_settings upsert error:', error);
+          supabase.from('admin_settings').select('*').then(({ data }) => {
+            if (data && data.length > 0) {
+              supabase.from('admin_settings').update(payload).eq('id', data[0].id).then(({ error }) => {
+                if (error) console.error('Supabase admin_settings update error:', error);
+              });
+            } else {
+              supabase.from('admin_settings').insert([{ id: 1, ...payload }]).then(({ error }) => {
+                if (error) console.error('Supabase admin_settings insert error:', error);
+              });
+            }
           });
         } else if (key === 'routerescue_plans' && Array.isArray(valueToStore)) {
           const payload = valueToStore.map((p: any) => ({
