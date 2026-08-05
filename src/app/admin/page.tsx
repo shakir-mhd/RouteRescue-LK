@@ -97,7 +97,7 @@ export default function SuperAdminDashboard() {
   const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
     setPassError('');
-    if (passcode === '1234' || passcode === (adminSettings?.passcode || '1234')) {
+    if (adminSettings && passcode.trim() === String(adminSettings.passcode).trim()) {
       setIsAdmin(true);
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('admin_verified', 'true');
@@ -363,7 +363,7 @@ export default function SuperAdminDashboard() {
             </div>
             <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-850 text-left text-[9px] text-slate-500 flex items-start gap-2">
               <Info size={16} className="text-slate-500 shrink-0 mt-0.5" />
-              <span>Use administrative passcode key <code className="text-amber-500 font-semibold">{adminSettings?.passcode || '1234'}</code>.</span>
+              <span>Enter your administrative security passcode configured in your Supabase database.</span>
             </div>
             <button
               type="submit"
@@ -741,7 +741,7 @@ export default function SuperAdminDashboard() {
                       </div>
 
                       <div className="mt-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-1 text-xs">
-                        <div className="text-slate-300">NIC: <strong className="text-accent-yellow">{vendor.nic || '881234567V'}</strong></div>
+                        <div className="text-slate-300">NIC: <strong className="text-accent-yellow">{vendor.nic || 'Not Provided'}</strong></div>
                         <div className="text-slate-400">Phone: <strong>{vendor.phone}</strong></div>
                         <div className="text-slate-400">City: <strong>{vendor.city}</strong></div>
                         <div className="text-slate-400 font-mono text-[10px] pt-1">

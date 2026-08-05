@@ -288,7 +288,7 @@ export default function MechanicPortal() {
         localStorage.setItem('mechanic_session', JSON.stringify(matched));
       }
     } else {
-      setFormError('Garage mobile not registered. Try phone "0719876543" or register below.');
+      setFormError('Garage mobile number not registered. Please register your garage account below.');
     }
   };
 
