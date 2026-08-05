@@ -151,11 +151,17 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             nic: d.nic,
             password: d.password,
           }));
-          supabase.from('drivers').upsert(payload).then(() => {});
+          supabase.from('drivers').upsert(payload).then(({ error }) => {
+            if (error) console.error('Supabase drivers upsert error:', error);
+          });
         } else if (key === 'routerescue_mechanics' && Array.isArray(valueToStore)) {
-          supabase.from('mechanics').upsert(valueToStore).then(() => {});
+          supabase.from('mechanics').upsert(valueToStore).then(({ error }) => {
+            if (error) console.error('Supabase mechanics upsert error:', error);
+          });
         } else if (key === 'routerescue_incidents' && Array.isArray(valueToStore)) {
-          supabase.from('incidents').upsert(valueToStore).then(() => {});
+          supabase.from('incidents').upsert(valueToStore).then(({ error }) => {
+            if (error) console.error('Supabase incidents upsert error:', error);
+          });
         } else if (key === 'routerescue_admin_settings' && valueToStore) {
           const payload = {
             id: 1,
@@ -163,7 +169,9 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             flat_rate: (valueToStore as any).flatRate,
             per_km_rate: (valueToStore as any).perKmRate,
           };
-          supabase.from('admin_settings').upsert(payload).then(() => {});
+          supabase.from('admin_settings').upsert(payload).then(({ error }) => {
+            if (error) console.error('Supabase admin_settings upsert error:', error);
+          });
         } else if (key === 'routerescue_plans' && Array.isArray(valueToStore)) {
           const payload = valueToStore.map((p: any) => ({
             id: String(p.id),
@@ -172,7 +180,9 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             radius: p.radius,
             features: p.features || [],
           }));
-          supabase.from('subscription_plans').upsert(payload).then(() => {});
+          supabase.from('subscription_plans').upsert(payload).then(({ error }) => {
+            if (error) console.error('Supabase subscription_plans upsert error:', error);
+          });
         }
       }
     } catch (error) {

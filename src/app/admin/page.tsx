@@ -9,6 +9,7 @@ import {
   Calendar, Trash2, CheckCircle, Phone, Clock, ShieldCheck, MapPin, ExternalLink
 } from 'lucide-react';
 import { useSharedState, Incident, Mechanic, SEED_MECHANICS, DEFAULT_ADMIN_SETTINGS, AdminSettings, SubscriptionPlan, DEFAULT_PLANS } from '../../utils/store';
+import { supabase } from '../../utils/supabase';
 import dynamic from 'next/dynamic';
 
 const MapInner = dynamic(() => import('../../components/MapInner'), {
@@ -256,7 +257,7 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     const updated: AdminSettings = {
       passcode: newPasscode,
@@ -264,7 +265,25 @@ export default function SuperAdminDashboard() {
       perKmRate: Number(perKmRate),
     };
     setAdminSettings(updated);
-    setSettingsMessage('Settings and Base Tariff Rates updated successfully!');
+    setSettingsMessage('Saving settings to database...');
+
+    try {
+      const { error } = await supabase.from('admin_settings').upsert({
+        id: 1,
+        passcode: newPasscode,
+        flat_rate: Number(flatRate),
+        per_km_rate: Number(perKmRate),
+      });
+
+      if (error) {
+        console.error('Supabase admin_settings error:', error);
+        setSettingsMessage(`⚠️ Database update note: ${error.message}`);
+      } else {
+        setSettingsMessage('✅ Settings and Base Tariff Rates saved to database & live system!');
+      }
+    } catch (err: any) {
+      console.error('Error updating admin_settings:', err);
+    }
   };
 
   const handleResetMockDataset = () => {
