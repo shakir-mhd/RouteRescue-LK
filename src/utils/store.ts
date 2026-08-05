@@ -364,6 +364,14 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
           supabase.from('mechanics').upsert(valueToStore).then(() => {});
         } else if (key === 'routerescue_incidents' && Array.isArray(valueToStore)) {
           supabase.from('incidents').upsert(valueToStore).then(() => {});
+        } else if (key === 'routerescue_admin_settings' && valueToStore) {
+          const payload = {
+            id: 1,
+            passcode: (valueToStore as any).passcode,
+            flat_rate: (valueToStore as any).flatRate,
+            per_km_rate: (valueToStore as any).perKmRate,
+          };
+          supabase.from('admin_settings').upsert(payload).then(() => {});
         }
       }
     } catch (error) {
@@ -414,6 +422,18 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             if (data && data.length > 0) {
               setState(data as unknown as T);
               window.localStorage.setItem(key, JSON.stringify(data));
+            }
+          } else if (key === 'routerescue_admin_settings') {
+            const { data } = await supabase.from('admin_settings').select('*');
+            if (data && data.length > 0) {
+              const s = data[0];
+              const mapped: AdminSettings = {
+                passcode: s.passcode,
+                flatRate: Number(s.flat_rate),
+                perKmRate: Number(s.per_km_rate),
+              };
+              setState(mapped as unknown as T);
+              window.localStorage.setItem(key, JSON.stringify(mapped));
             }
           }
         } catch (e) {
