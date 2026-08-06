@@ -1041,7 +1041,12 @@ export default function MechanicPortal() {
           <div className="space-y-6">
             {(() => {
               const maxCap = currentMechanic.maxCapacity || (currentMechanic.tier === 'Premium Pro' || (currentMechanic.tier as string) === 'premium' ? 5 : 3);
-              const activeJobCount = currentMechanic.activeJobs || 0;
+              const activeDispatchesForThisGarage = incidents.filter(
+                (i) =>
+                  String(i.mechanicId) === String(currentMechanic.id) &&
+                  (i.status === 'Mechanic Assigned' || i.status === 'Mechanic En Route' || i.status === 'On-Site Repair')
+              );
+              const activeJobCount = activeDispatchesForThisGarage.length;
 
               return (
                 <div className="glass-panel p-5 rounded-2xl border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -1070,7 +1075,7 @@ export default function MechanicPortal() {
                   </div>
 
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-                    {/* Operational Engine Start / Duty Switch Widget */}
+                    {/* Operational Duty Switch Widget */}
                     <button
                       onClick={handleToggleOperatingStatus}
                       className={`relative group px-5 py-3 rounded-2xl border transition-all duration-300 cursor-pointer shadow-xl overflow-hidden active:scale-95 flex items-center gap-3.5 ${
@@ -1078,16 +1083,16 @@ export default function MechanicPortal() {
                           ? 'bg-gradient-to-r from-emerald-950/90 via-slate-900 to-teal-950/90 border-emerald-500/50 hover:border-emerald-400 shadow-emerald-950/50'
                           : 'bg-gradient-to-r from-slate-950 via-slate-900 to-red-950/80 border-red-500/40 hover:border-red-400 shadow-red-950/50'
                       }`}
-                      title="Click to turn Garage Engine Power ON/OFF"
+                      title="Click to toggle garage operating status (Open / Closed)"
                     >
                       {/* Ambient Glow Backdrop */}
                       <div className={`absolute -inset-1 rounded-2xl blur-md opacity-40 group-hover:opacity-100 transition duration-500 pointer-events-none ${
                         currentMechanic.isOpen !== false ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-red-600 to-amber-600'
                       }`} />
 
-                      {/* 3D Circular Metallic Engine Ignition Button Icon */}
+                      {/* Power Icon */}
                       <div className="relative z-10 flex items-center justify-center shrink-0">
-                        <div className={`h-11 w-11 rounded-full p-0.5 transition-all duration-300 shadow-lg ${
+                        <div className={`h-10 w-10 rounded-full p-0.5 transition-all duration-300 shadow-lg ${
                           currentMechanic.isOpen !== false
                             ? 'bg-gradient-to-b from-emerald-400 to-teal-700 shadow-emerald-500/50'
                             : 'bg-gradient-to-b from-slate-700 to-red-900 shadow-red-900/40'
@@ -1097,7 +1102,7 @@ export default function MechanicPortal() {
                               ? 'bg-slate-950 border-emerald-400/60 text-emerald-400'
                               : 'bg-slate-950 border-red-500/40 text-red-500'
                           }`}>
-                            <Power size={18} className={`transition-transform duration-300 group-hover:scale-110 ${currentMechanic.isOpen !== false ? 'drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]' : ''}`} />
+                            <Power size={16} className={`transition-transform duration-300 group-hover:scale-110 ${currentMechanic.isOpen !== false ? 'drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]' : ''}`} />
                           </div>
                         </div>
                       </div>
@@ -1116,13 +1121,13 @@ export default function MechanicPortal() {
                           <span className={`text-xs font-black uppercase tracking-wider ${
                             currentMechanic.isOpen !== false ? 'text-emerald-300' : 'text-red-400'
                           }`}>
-                            {currentMechanic.isOpen !== false ? 'START ENGINE • ON DUTY' : 'ENGINE OFF • HOLIDAY'}
+                            {currentMechanic.isOpen !== false ? 'GARAGE OPEN' : 'GARAGE CLOSED'}
                           </span>
                         </div>
                         <p className="text-[10px] text-slate-400 font-medium mt-0.5">
                           {currentMechanic.isOpen !== false
-                            ? '⚡ Garage active & receiving driver requests'
-                            : '🛑 Garage closed • Hidden from driver booking'}
+                            ? 'Ready for driver rescue calls'
+                            : 'Off-Duty / Garage closed'}
                         </p>
                       </div>
 
@@ -1131,7 +1136,7 @@ export default function MechanicPortal() {
                           ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                           : 'bg-red-500/20 text-red-400 border-red-500/40'
                       }`}>
-                        {currentMechanic.isOpen !== false ? 'ONLINE' : 'OFFLINE'}
+                        {currentMechanic.isOpen !== false ? 'OPEN' : 'CLOSED'}
                       </div>
                     </button>
 
