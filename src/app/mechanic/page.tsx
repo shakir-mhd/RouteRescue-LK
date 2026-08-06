@@ -418,6 +418,7 @@ export default function MechanicPortal() {
         {
           id: String(targetEmpId),
           mechanic_id: String(currentMechanic.id),
+          garage_name: currentMechanic.businessName || currentMechanic.name,
           name: empName,
           phone: empPhone,
           role: empRole,
