@@ -300,26 +300,46 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             }
           } else if (key === 'routerescue_mechanics') {
             const { data } = await supabase.from('mechanics').select('*');
+            let empList: any[] = [];
+            try {
+              const { data: eData } = await supabase.from('garage_employees').select('*');
+              if (eData) empList = eData;
+            } catch (e) {}
+
             if (data) {
-              const mapped = data.map((m: any) => ({
-                id: m.id,
-                name: m.name,
-                phone: m.phone,
-                nic: m.nic,
-                password: m.password,
-                city: m.city,
-                lat: Number(m.lat),
-                lng: Number(m.lng),
-                tier: m.tier,
-                radius: Number(m.radius),
-                status: m.status,
-                businessName: m.business_name || m.businessName || m.name,
-                isAvailable: typeof m.is_available === 'boolean' ? m.is_available : true,
-                activeJobs: Number(m.active_jobs || m.activeJobs || 0),
-                maxCapacity: Number(m.max_capacity || m.maxCapacity || 3),
-                employees: Array.isArray(m.employees) ? m.employees : [],
-                pendingLocation: m.pending_location || m.pendingLocation || undefined,
-              }));
+              const mapped = data.map((m: any) => {
+                const garageEmps = empList
+                  .filter((e: any) => String(e.mechanic_id) === String(m.id))
+                  .map((e: any) => ({
+                    id: String(e.id),
+                    name: e.name,
+                    phone: e.phone,
+                    role: e.role,
+                  }));
+
+                const fallbackEmps = Array.isArray(m.employees) ? m.employees : [];
+                const finalEmps = garageEmps.length > 0 ? garageEmps : fallbackEmps;
+
+                return {
+                  id: m.id,
+                  name: m.name,
+                  phone: m.phone,
+                  nic: m.nic,
+                  password: m.password,
+                  city: m.city,
+                  lat: Number(m.lat),
+                  lng: Number(m.lng),
+                  tier: m.tier,
+                  radius: Number(m.radius),
+                  status: m.status,
+                  businessName: m.business_name || m.businessName || m.name,
+                  isAvailable: typeof m.is_available === 'boolean' ? m.is_available : true,
+                  activeJobs: Number(m.active_jobs || m.activeJobs || 0),
+                  maxCapacity: Number(m.max_capacity || m.maxCapacity || 3),
+                  employees: finalEmps,
+                  pendingLocation: m.pending_location || m.pendingLocation || undefined,
+                };
+              });
               setState(mapped as unknown as T);
               window.localStorage.setItem(key, JSON.stringify(mapped));
             }

@@ -411,6 +411,18 @@ export default function MechanicPortal() {
         pending_location: updatedMech.pendingLocation || null,
       };
       await supabase.from('mechanics').upsert([payload]);
+
+      // Also sync to dedicated garage_employees table if created
+      const targetEmpId = editingEmployee ? editingEmployee.id : updatedEmployees[updatedEmployees.length - 1].id;
+      await supabase.from('garage_employees').upsert([
+        {
+          id: String(targetEmpId),
+          mechanic_id: String(currentMechanic.id),
+          name: empName,
+          phone: empPhone,
+          role: empRole,
+        },
+      ]);
     } catch (err) {
       console.error('Supabase employee save error:', err);
     }
@@ -454,6 +466,7 @@ export default function MechanicPortal() {
         pending_location: updatedMech.pendingLocation || null,
       };
       await supabase.from('mechanics').upsert([payload]);
+      await supabase.from('garage_employees').delete().eq('id', String(empId));
     } catch (err) {
       console.error('Supabase employee delete error:', err);
     }
