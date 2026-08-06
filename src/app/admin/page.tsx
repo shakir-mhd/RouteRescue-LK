@@ -309,7 +309,7 @@ export default function SuperAdminDashboard() {
     setSettingsMessage('Mock dataset reset to initial Sri Lankan city garages!');
   };
 
-  const handleApproveLocationChange = (id: number | string) => {
+  const handleApproveLocationChange = async (id: number | string) => {
     const vendor = mechanics.find((m) => String(m.id) === String(id));
     if (!vendor || !vendor.pendingLocation) return;
 

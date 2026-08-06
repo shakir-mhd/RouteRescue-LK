@@ -208,6 +208,7 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             active_jobs: Number(m.activeJobs || m.active_jobs || 0),
             max_capacity: Number(m.maxCapacity || m.max_capacity || 3),
             employees: Array.isArray(m.employees) ? m.employees : [],
+            pending_location: m.pendingLocation || m.pending_location || null,
           }));
           supabase.from('mechanics').upsert(payload).then(({ error }) => {
             if (error) console.error('Supabase mechanics upsert error:', error);
