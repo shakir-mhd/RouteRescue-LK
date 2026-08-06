@@ -58,7 +58,7 @@ export default function LandingPage() {
               ROUTE RESCUE
             </span>
             <span className="bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black text-xs px-2.5 py-1 rounded-lg shadow-lg border border-emerald-300/50 uppercase tracking-widest self-center">
-              LK 🇱🇰
+              LK
             </span>
           </h1>
           <p className="text-xs text-slate-400 leading-relaxed px-4">
