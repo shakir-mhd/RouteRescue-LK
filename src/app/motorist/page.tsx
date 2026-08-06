@@ -80,14 +80,6 @@ export default function MotoristPortal() {
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          const needsRepair = parsed.some((m: any) => m.id === 7 && (m.lat === 6.6828 || m.status !== 'Approved' || !m.isAvailable));
-          if (needsRepair) {
-            const repaired = parsed.map((m: any) =>
-              m.id === 7 ? { ...m, lat: 6.6815, lng: 80.4080, status: 'Approved', isAvailable: true } : m
-            );
-            localStorage.setItem('routerescue_mechanics', JSON.stringify(repaired));
-            setMechanics(repaired);
-          }
         } catch (e) {}
       }
 
@@ -333,25 +325,11 @@ export default function MotoristPortal() {
         setIncidents((prev) => prev.map((i) => (i.id === activeIncident.id ? updated : i)));
       }, 15000);
 
-      const movementInterval = setInterval(() => {
-        setMechanics((prev) => {
-          return prev.map((m) => {
-            if (String(m.id) === String(activeIncident.mechanicId)) {
-              const latDiff = userLocation[0] - m.lat;
-              const lngDiff = userLocation[1] - m.lng;
-              return { ...m, lat: m.lat + latDiff * 0.25, lng: m.lng + lngDiff * 0.25 };
-            }
-            return m;
-          });
-        });
-      }, 2500);
-
       return () => {
         clearTimeout(arrivalTimer);
-        clearInterval(movementInterval);
       };
     }
-  }, [activeIncident, userLocation, setActiveIncident, setIncidents, setMechanics, mechanics]);
+  }, [activeIncident, setActiveIncident, setIncidents]);
 
   const handleSubmitIncident = (
     category: string,
