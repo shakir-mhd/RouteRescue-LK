@@ -1140,18 +1140,23 @@ export default function MechanicPortal() {
                       </div>
                     </button>
 
-                    {/* Active Job Capacity Counter Widget */}
-                    <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 flex items-center gap-4 shrink-0 justify-between">
+                    {/* Concurrent Active Dispatch Capacity Widget */}
+                    <div
+                      className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 flex items-center gap-4 shrink-0 justify-between"
+                      title="Unlimited daily bookings! This counter limits active dispatches at the exact same time."
+                    >
                       <div>
-                        <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider block">Active Job Capacity</span>
+                        <span className="text-[10px] text-slate-400 uppercase font-black tracking-wider block">
+                          CONCURRENT CAPACITY
+                        </span>
                         <div className="text-sm font-extrabold text-slate-100 mt-0.5 flex items-center gap-1.5">
                           <span className={activeJobCount >= maxCap ? 'text-red-400 font-black' : 'text-accent-green font-black'}>
                             {activeJobCount} / {maxCap}
                           </span>
-                          <span className="text-xs text-slate-400 font-semibold">Active Jobs</span>
+                          <span className="text-[11px] text-slate-400 font-bold">At Same Time</span>
                         </div>
                       </div>
-                      <div className="h-9 w-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-bold text-slate-300">
+                      <div className="h-9 w-9 rounded-xl bg-slate-850 border border-slate-700 flex items-center justify-center text-xs font-black text-emerald-400">
                         {Math.round((activeJobCount / maxCap) * 100)}%
                       </div>
                     </div>

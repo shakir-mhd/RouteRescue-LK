@@ -374,13 +374,13 @@ export default function MapInner({
                     </div>
                   ) : isFull ? (
                     <div className="text-amber-400 bg-amber-950/60 p-1.5 rounded-lg border border-amber-500/40 flex items-center justify-between">
-                      <span>🟡 Full Capacity</span>
-                      <span className="font-mono text-[10px]">{activeJobsCount}/{maxCap} Jobs</span>
+                      <span>🟡 Full Concurrent Capacity</span>
+                      <span className="font-mono text-[10px]">{activeJobsCount}/{maxCap} At Same Time</span>
                     </div>
                   ) : (
                     <div className="text-emerald-400 bg-emerald-950/60 p-1.5 rounded-lg border border-emerald-500/40 flex items-center justify-between">
                       <span>🟢 Ready for Dispatch</span>
-                      <span className="font-mono text-[10px]">{activeJobsCount}/{maxCap} Jobs</span>
+                      <span className="font-mono text-[10px]">{activeJobsCount}/{maxCap} At Same Time</span>
                     </div>
                   )}
                 </div>
