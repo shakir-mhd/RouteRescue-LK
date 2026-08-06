@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS } from '@/utils/store';
+import { supabase } from '../../utils/supabase';
 
 const GarageLocationPickerMap = dynamic(() => import('../../components/GarageLocationPickerInner'), {
   ssr: false,
@@ -285,7 +286,7 @@ export default function MechanicPortal() {
     }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
@@ -326,6 +327,34 @@ export default function MechanicPortal() {
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('mechanic_session', JSON.stringify(newMech));
+    }
+
+    try {
+      const payload = {
+        id: String(newMech.id),
+        name: newMech.name,
+        phone: newMech.phone,
+        nic: newMech.nic,
+        password: newMech.password,
+        city: newMech.city,
+        lat: newMech.lat,
+        lng: newMech.lng,
+        tier: newMech.tier,
+        radius: newMech.radius,
+        status: newMech.status,
+        business_name: newMech.businessName,
+        is_available: true,
+        active_jobs: 0,
+        max_capacity: newMech.maxCapacity,
+        employees: newMech.employees,
+      };
+
+      const { error } = await supabase.from('mechanics').upsert([payload]);
+      if (error) {
+        console.error('Direct Supabase registration error:', error);
+      }
+    } catch (err) {
+      console.error('Supabase write error:', err);
     }
   };
 
