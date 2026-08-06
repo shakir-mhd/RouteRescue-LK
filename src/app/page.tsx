@@ -42,8 +42,12 @@ export default function LandingPage() {
           transition={{ duration: 0.5 }}
           className="flex flex-col items-center gap-3"
         >
-          <div className="h-16 w-16 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center text-3xl shadow-xl shadow-orange-950/20">
-            🛡️
+          <div className="relative group">
+            <img
+              src="/logo.png"
+              alt="RouteRescue LK Logo"
+              className="h-28 w-28 object-contain drop-shadow-[0_0_30px_rgba(249,115,22,0.4)] group-hover:scale-105 transition-transform duration-300"
+            />
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight uppercase bg-gradient-to-r from-accent-orange via-amber-400 to-emerald-400 bg-clip-text text-transparent">
             RouteRescue LK

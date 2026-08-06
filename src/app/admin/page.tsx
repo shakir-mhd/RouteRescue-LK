@@ -426,9 +426,14 @@ export default function SuperAdminDashboard() {
             <span>Return to Home</span>
           </button>
 
-          <div className="text-center">
+          <div className="text-center flex flex-col items-center">
+            <img
+              src="/logo.png"
+              alt="RouteRescue LK Logo"
+              className="h-24 w-24 object-contain drop-shadow-[0_0_25px_rgba(249,115,22,0.4)] mb-2"
+            />
             <h2 className="text-lg font-extrabold text-slate-200 flex items-center justify-center gap-2">
-              <ShieldAlert className="text-red-500 animate-pulse" size={22} />
+              <ShieldAlert className="text-red-500 animate-pulse" size={20} />
               <span>Super Admin Portal</span>
             </h2>
             <p className="text-xs text-slate-400 mt-1">

@@ -30,6 +30,10 @@ export const metadata: Metadata = {
     title: "RouteRescue LK",
     statusBarStyle: "black-translucent",
   },
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

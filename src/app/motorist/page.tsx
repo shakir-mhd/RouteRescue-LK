@@ -477,9 +477,14 @@ export default function MotoristPortal() {
                 <span>Return to Home</span>
               </button>
 
-              <div className="text-center">
+              <div className="text-center flex flex-col items-center">
+                <img
+                  src="/logo.png"
+                  alt="RouteRescue LK Logo"
+                  className="h-20 w-20 object-contain drop-shadow-[0_0_20px_rgba(249,115,22,0.4)] mb-2"
+                />
                 <h2 className="text-base font-extrabold text-slate-100 flex items-center justify-center gap-2">
-                  <span>🚗 Driver Portal</span>
+                  <span>Driver Portal</span>
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
                   {authMode === 'login' && 'Log in to request roadside assistance'}
