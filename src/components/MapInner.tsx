@@ -18,6 +18,9 @@ interface Mechanic {
   id: string | number;
   name: string;
   businessName?: string;
+  phone?: string;
+  nic?: string;
+  city?: string;
   lat: number;
   lng: number;
   tier: 'Basic' | 'Premium Pro' | 'basic' | 'premium';
@@ -25,6 +28,7 @@ interface Mechanic {
   isOpen?: boolean;
   maxCapacity?: number;
   activeJobs?: number;
+  employees?: any[];
   pendingLocation?: any;
 }
 
@@ -340,32 +344,56 @@ export default function MapInner({
         return (
           <Marker key={mech.id} position={[mech.lat, mech.lng]} icon={createMechanicIcon(mech.tier)}>
             <Popup>
-              <div className="text-xs p-2 text-slate-200">
-                <div className="font-semibold text-accent-green text-sm flex items-center gap-1">
-                  {mech.businessName || mech.name}
+              <div className="text-xs p-2.5 text-slate-100 min-w-[220px] space-y-2">
+                <div className="flex items-center justify-between border-b border-slate-700/80 pb-1.5 gap-2">
+                  <div className="font-black text-emerald-400 text-xs sm:text-sm flex items-center gap-1">
+                    🏢 {mech.businessName || mech.name}
+                  </div>
                   {(mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium') ? (
-                    <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full border border-amber-500/40 font-bold">
-                      PRO (5 Jobs)
+                    <span className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/40 font-black shrink-0">
+                      PRO (25km)
                     </span>
                   ) : (
-                    <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full border border-emerald-500/40 font-bold">
-                      BASIC (3 Jobs)
+                    <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/40 font-black shrink-0">
+                      BASIC (5km)
                     </span>
                   )}
                 </div>
-                <div className="text-slate-400 mt-1 flex items-center gap-1 font-medium">
+
+                <div className="space-y-1 bg-slate-950/80 p-2 rounded-xl border border-slate-800 text-[11px]">
+                  {mech.name && <div className="text-slate-300">Owner: <strong className="text-white">{mech.name}</strong></div>}
+                  {mech.phone && <div className="text-slate-300">Phone: <strong className="text-amber-400">{mech.phone}</strong></div>}
+                  {mech.nic && <div className="text-slate-300">NIC: <strong className="text-slate-200">{mech.nic}</strong></div>}
+                  {mech.city && <div className="text-slate-400 text-[10px]">District: <strong className="text-slate-300">{mech.city}</strong></div>}
+                </div>
+
+                <div className="text-[11px] font-bold">
                   {mech.isOpen === false ? (
-                    <span className="text-red-400 font-bold bg-red-950/40 px-2 py-0.5 rounded border border-red-500/30">🔴 CLOSED / ON LEAVE (Off-Duty)</span>
+                    <div className="text-red-400 bg-red-950/60 p-1.5 rounded-lg border border-red-500/40 flex items-center gap-1">
+                      <span>🔴 CLOSED / ON LEAVE (Off-Duty)</span>
+                    </div>
                   ) : isFull ? (
-                    <span className="text-amber-400 font-bold">🟡 Full Capacity ({activeJobsCount}/{maxCap} Jobs)</span>
+                    <div className="text-amber-400 bg-amber-950/60 p-1.5 rounded-lg border border-amber-500/40 flex items-center justify-between">
+                      <span>🟡 Full Capacity</span>
+                      <span className="font-mono text-[10px]">{activeJobsCount}/{maxCap} Jobs</span>
+                    </div>
                   ) : (
-                    <span className="text-emerald-400 font-bold">🟢 OPEN • Ready for Dispatch ({activeJobsCount}/{maxCap} Jobs)</span>
+                    <div className="text-emerald-400 bg-emerald-950/60 p-1.5 rounded-lg border border-emerald-500/40 flex items-center justify-between">
+                      <span>🟢 Ready for Dispatch</span>
+                      <span className="font-mono text-[10px]">{activeJobsCount}/{maxCap} Jobs</span>
+                    </div>
                   )}
                 </div>
-                <div className="text-[10px] text-slate-500 capitalize">Radius coverage: {mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium' ? '25km' : '5km'}</div>
+
+                {mech.employees && (
+                  <div className="text-[10px] text-slate-400 font-medium">
+                    Staff: <strong className="text-emerald-400 font-black">{mech.employees.length || 1} Technicians</strong> on Roster
+                  </div>
+                )}
+
                 {mech.pendingLocation && (
-                  <div className="mt-1.5 p-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold leading-tight">
-                    ℹ️ A new location update has been requested to {mech.pendingLocation.city} (Pending Admin Approval)
+                  <div className="p-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold leading-tight">
+                    ⚠️ Location Update Requested: <span className="underline">{mech.pendingLocation.city}</span> (Pending Admin Review)
                   </div>
                 )}
               </div>
