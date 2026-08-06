@@ -126,13 +126,27 @@ const createRegionCenterIcon = () =>
 
 function RecenterMap({ position, zoom }: { position: [number, number]; zoom: number }) {
   const map = useMap();
+  const prevRef = useRef<{ lat: number; lng: number; zoom: number } | null>(null);
+
   useEffect(() => {
-    map.setView(position, zoom);
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [position, zoom, map]);
+    const lat = position[0];
+    const lng = position[1];
+
+    if (
+      !prevRef.current ||
+      prevRef.current.lat !== lat ||
+      prevRef.current.lng !== lng ||
+      prevRef.current.zoom !== zoom
+    ) {
+      prevRef.current = { lat, lng, zoom };
+      map.setView([lat, lng], zoom);
+      const timer = setTimeout(() => {
+        map.invalidateSize();
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [position[0], position[1], zoom, map]);
+
   return null;
 }
 

@@ -154,13 +154,13 @@ export default function MapDashboard({
 
       {/* Request Breakdown Rescue Trigger Banner (Visible when not reporting) */}
       {!reportMode && (
-        <div className="absolute bottom-28 left-4 right-4 z-40 max-w-md mx-auto">
+        <div className="absolute bottom-20 left-4 right-4 z-[990] max-w-md mx-auto mb-1">
           <button
             onClick={onRequestAssistance}
-            className="w-full py-4 px-6 bg-gradient-to-r from-accent-orange to-red-600 text-white font-bold rounded-2xl shadow-xl shadow-orange-950/40 hover:shadow-orange-950/60 active:scale-[0.98] transition-all flex items-center justify-center gap-3 border border-orange-400 cursor-pointer"
+            className="w-full py-3.5 px-5 bg-gradient-to-r from-accent-orange via-orange-500 to-red-600 text-white font-black text-sm rounded-2xl shadow-[0_0_30px_rgba(249,115,22,0.4)] hover:shadow-orange-950/60 active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 border-2 border-orange-300 cursor-pointer animate-pulse"
           >
-            <Navigation size={22} className="animate-pulse" />
-            <span className="tracking-wide">Report Breakdown & Triage</span>
+            <Navigation size={20} className="animate-bounce" />
+            <span className="uppercase tracking-wider">Report Breakdown & Triage</span>
           </button>
         </div>
       )}
