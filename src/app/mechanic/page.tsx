@@ -561,7 +561,7 @@ export default function MechanicPortal() {
     const resolvedIncident: Incident = { ...inc, status: 'Resolved' };
     const updatedIncidents = incidents.map((i) => (i.id === inc.id ? resolvedIncident : i));
     const updatedActiveJobs = Math.max(0, (currentMechanic.activeJobs || 1) - 1);
-    const updatedMech = { ...currentMechanic, activeJobs: updatedActiveJobs };
+    const updatedMech = { ...currentMechanic, activeJobs: updatedActiveJobs, isAvailable: true };
 
     setIncidents(updatedIncidents);
     setCurrentMechanic(updatedMech);
@@ -588,10 +588,11 @@ export default function MechanicPortal() {
         assigned_employee: resolvedIncident.assignedEmployee || null,
       };
 
-      const { error } = await supabase.from('incidents').upsert([payload]);
-      if (error) {
-        console.error('Supabase incident resolve error:', error);
-      }
+      await supabase.from('incidents').upsert([payload]);
+      await supabase
+        .from('mechanics')
+        .update({ is_available: true, active_jobs: updatedActiveJobs })
+        .eq('id', String(currentMechanic.id));
     } catch (err) {
       console.error('Error saving resolved incident to Supabase:', err);
     }

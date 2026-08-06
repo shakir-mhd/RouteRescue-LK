@@ -328,32 +328,36 @@ export default function MapInner({
         </React.Fragment>
       ))}
 
-      {/* Verified Mechanics */}
-      {mechanics
-        .filter((m) => m.isAvailable !== false)
-        .map((mech) => (
-          <Marker key={mech.id} position={[mech.lat, mech.lng]} icon={createMechanicIcon(mech.tier)}>
-            <Popup>
-              <div className="text-xs p-2 text-slate-200">
-                <div className="font-semibold text-accent-green text-sm flex items-center gap-1">
-                  {mech.businessName || mech.name}
-                  {(mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium') && (
-                    <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full border border-amber-500/40">
-                      PRO
-                    </span>
-                  )}
-                </div>
-                <div className="text-slate-400 mt-1">Ready for dispatch</div>
-                <div className="text-[10px] text-slate-500 capitalize">Radius coverage: {mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium' ? '25km' : '5km'}</div>
-                {mech.pendingLocation && (
-                  <div className="mt-1.5 p-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold leading-tight">
-                    ℹ️ A new location update has been requested to {mech.pendingLocation.city} (Pending Admin Approval)
-                  </div>
+      {/* Verified Mechanics - All Approved Garages Remain Permanently Visible */}
+      {mechanics.map((mech) => (
+        <Marker key={mech.id} position={[mech.lat, mech.lng]} icon={createMechanicIcon(mech.tier)}>
+          <Popup>
+            <div className="text-xs p-2 text-slate-200">
+              <div className="font-semibold text-accent-green text-sm flex items-center gap-1">
+                {mech.businessName || mech.name}
+                {(mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium') && (
+                  <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full border border-amber-500/40 font-bold">
+                    PRO
+                  </span>
                 )}
               </div>
-            </Popup>
-          </Marker>
-        ))}
+              <div className="text-slate-400 mt-1 flex items-center gap-1 font-medium">
+                {mech.isAvailable === false ? (
+                  <span className="text-amber-400 font-bold">🟡 Busy on Active Call</span>
+                ) : (
+                  <span className="text-emerald-400 font-bold">🟢 Ready for Dispatch</span>
+                )}
+              </div>
+              <div className="text-[10px] text-slate-500 capitalize">Radius coverage: {mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium' ? '25km' : '5km'}</div>
+              {mech.pendingLocation && (
+                <div className="mt-1.5 p-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold leading-tight">
+                  ℹ️ A new location update has been requested to {mech.pendingLocation.city} (Pending Admin Approval)
+                </div>
+              )}
+            </div>
+          </Popup>
+        </Marker>
+      ))}
     </MapContainer>
   );
 }

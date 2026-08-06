@@ -532,6 +532,12 @@ export default function MotoristPortal() {
       if (error) {
         console.error('Supabase incident resolve error:', error);
       }
+      if (activeIncident.mechanicId) {
+        await supabase
+          .from('mechanics')
+          .update({ is_available: true })
+          .eq('id', String(activeIncident.mechanicId));
+      }
     } catch (err) {
       console.error('Error writing resolved incident to Supabase:', err);
     }
