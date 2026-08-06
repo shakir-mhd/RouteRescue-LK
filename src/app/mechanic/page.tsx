@@ -511,7 +511,7 @@ export default function MechanicPortal() {
     }
   };
 
-  const handleDispatchEmployee = (incidentId: string) => {
+  const handleDispatchEmployee = async (incidentId: string) => {
     if (!currentMechanic) return;
     const targetInc = incidents.find((i) => i.id === incidentId);
     if (!targetInc || targetInc.status !== 'Request Sent') {
@@ -529,8 +529,10 @@ export default function MechanicPortal() {
       assignedEmployee: matchedEmp ? { id: matchedEmp.id, name: matchedEmp.name, phone: matchedEmp.phone, role: matchedEmp.role } : undefined,
     };
 
+    const maxCap = currentMechanic.maxCapacity || (currentMechanic.tier === 'Premium Pro' || (currentMechanic.tier as string) === 'premium' ? 5 : 3);
     const updatedActiveJobs = (currentMechanic.activeJobs || 0) + 1;
-    const updatedMech = { ...currentMechanic, activeJobs: updatedActiveJobs };
+    const isStillAvailable = updatedActiveJobs < maxCap;
+    const updatedMech = { ...currentMechanic, activeJobs: updatedActiveJobs, isAvailable: isStillAvailable, maxCapacity: maxCap };
 
     setIncidents(incidents.map((i) => (i.id === incidentId ? updatedIncident : i)));
     setCurrentMechanic(updatedMech);
@@ -539,6 +541,15 @@ export default function MechanicPortal() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('routerescue_active_incident', JSON.stringify(updatedIncident));
       window.dispatchEvent(new Event('local-storage-sync'));
+    }
+
+    try {
+      await supabase
+        .from('mechanics')
+        .update({ active_jobs: updatedActiveJobs, is_available: isStillAvailable, max_capacity: maxCap })
+        .eq('id', String(currentMechanic.id));
+    } catch (err) {
+      console.error('Error updating mechanic dispatch capacity:', err);
     }
 
     if (matchedEmp) {
@@ -1003,48 +1014,54 @@ export default function MechanicPortal() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Garage Profile Info Header Card */}
-            <div className="glass-panel p-5 rounded-2xl border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-2xl bg-accent-green/15 border border-accent-green/30 text-accent-green flex items-center justify-center text-xl shrink-0">
-                  🏢
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base font-extrabold text-slate-100">{currentMechanic.businessName || currentMechanic.name}</h2>
-                    {currentMechanic.tier === 'Premium Pro' ? (
-                      <span className="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1">
-                        <Star size={10} className="fill-amber-400 text-amber-400" />
-                        <span>PRO (25km)</span>
-                      </span>
-                    ) : (
-                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[9px] font-bold">
-                        Basic (5km)
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Owner: <strong className="text-slate-200">{currentMechanic.name}</strong> • Phone: <strong className="text-slate-200">{currentMechanic.phone}</strong> • NIC: <strong className="text-slate-200">{currentMechanic.nic}</strong> • Staff: <strong className="text-emerald-400 font-extrabold">{currentMechanic.employees?.length || 0} Technicians</strong>
-                  </p>
-                </div>
-              </div>
+            {(() => {
+              const maxCap = currentMechanic.maxCapacity || (currentMechanic.tier === 'Premium Pro' || (currentMechanic.tier as string) === 'premium' ? 5 : 3);
+              const activeJobCount = currentMechanic.activeJobs || 0;
 
-              {/* Active Job Capacity Counter Widget */}
-              <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 flex items-center gap-4 shrink-0 w-full md:w-auto justify-between">
-                <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider block">Active Job Capacity</span>
-                  <div className="text-sm font-extrabold text-slate-100 mt-0.5 flex items-center gap-1.5">
-                    <span className={activeJobCount >= maxCap ? 'text-red-400' : 'text-accent-green'}>
-                      {activeJobCount} / {maxCap}
-                    </span>
-                    <span className="text-xs text-slate-400 font-semibold">Active Jobs</span>
+              return (
+                <div className="glass-panel p-5 rounded-2xl border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-accent-green/15 border border-accent-green/30 text-accent-green flex items-center justify-center text-xl shrink-0">
+                      🏢
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-extrabold text-slate-100">{currentMechanic.businessName || currentMechanic.name}</h2>
+                        {currentMechanic.tier === 'Premium Pro' ? (
+                          <span className="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1">
+                            <Star size={10} className="fill-amber-400 text-amber-400" />
+                            <span>PRO (25km • Max 5 Jobs)</span>
+                          </span>
+                        ) : (
+                          <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[9px] font-bold">
+                            Basic (5km • Max 3 Jobs)
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Owner: <strong className="text-slate-200">{currentMechanic.name}</strong> • Phone: <strong className="text-slate-200">{currentMechanic.phone}</strong> • NIC: <strong className="text-slate-200">{currentMechanic.nic}</strong> • Staff: <strong className="text-emerald-400 font-extrabold">{currentMechanic.employees?.length || 0} Technicians</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Active Job Capacity Counter Widget */}
+                  <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 flex items-center gap-4 shrink-0 w-full md:w-auto justify-between">
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider block">Active Job Capacity</span>
+                      <div className="text-sm font-extrabold text-slate-100 mt-0.5 flex items-center gap-1.5">
+                        <span className={activeJobCount >= maxCap ? 'text-red-400 font-black' : 'text-accent-green font-black'}>
+                          {activeJobCount} / {maxCap}
+                        </span>
+                        <span className="text-xs text-slate-400 font-semibold">Active Jobs</span>
+                      </div>
+                    </div>
+                    <div className="h-9 w-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-bold text-slate-300">
+                      {Math.round((activeJobCount / maxCap) * 100)}%
+                    </div>
                   </div>
                 </div>
-                <div className="h-9 w-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-bold text-slate-300">
-                  {Math.round((activeJobCount / maxCap) * 100)}%
-                </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Pending Location Change Request Alert Banner */}
             {currentMechanic.pendingLocation && (

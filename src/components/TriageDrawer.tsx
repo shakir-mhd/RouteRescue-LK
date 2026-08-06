@@ -14,6 +14,8 @@ interface Mechanic {
   tier: 'Basic' | 'Premium Pro' | 'basic' | 'premium';
   radius: number;
   isAvailable?: boolean;
+  maxCapacity?: number;
+  activeJobs?: number;
   pendingLocation?: any;
 }
 
@@ -95,7 +97,10 @@ export default function TriageDrawer({
     const options: NearbyOption[] = [];
 
     mechanics.forEach((mech) => {
-      if (mech.isAvailable === false) return;
+      const maxCap = mech.maxCapacity || (mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium' ? 5 : 3);
+      const activeJobsCount = mech.activeJobs || 0;
+      if (activeJobsCount >= maxCap) return;
+
       const d = getDistanceInKm(reportLocation[0], reportLocation[1], mech.lat, mech.lng);
       const maxRadius = mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium' ? 25 : 5;
 
