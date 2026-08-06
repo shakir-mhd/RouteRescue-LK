@@ -22,6 +22,7 @@ import {
   X,
   AlertTriangle,
   MapPin,
+  FileText,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS } from '@/utils/store';
@@ -92,7 +93,7 @@ export default function MechanicPortal() {
   const [currentMechanic, setCurrentMechanic] = useState<Mechanic | null>(null);
 
   // Tab & Form State
-  const [activeTab, setActiveTab] = useState<'dispatch' | 'roster' | 'settings'>('dispatch');
+  const [activeTab, setActiveTab] = useState<'dispatch' | 'roster' | 'history' | 'settings'>('dispatch');
 
   // Login & Registration State
   const [loginPhone, setLoginPhone] = useState('0719876543');
@@ -444,6 +445,51 @@ export default function MechanicPortal() {
     setQuickDispatchIncidentId(null);
     setSelectedDispatchPhone('');
   };
+
+  const handleResolveIncidentByMechanic = async (inc: Incident) => {
+    if (!currentMechanic) return;
+    const resolvedIncident: Incident = { ...inc, status: 'Resolved' };
+    const updatedIncidents = incidents.map((i) => (i.id === inc.id ? resolvedIncident : i));
+    const updatedActiveJobs = Math.max(0, (currentMechanic.activeJobs || 1) - 1);
+    const updatedMech = { ...currentMechanic, activeJobs: updatedActiveJobs };
+
+    setIncidents(updatedIncidents);
+    setCurrentMechanic(updatedMech);
+    setMechanics(mechanics.map((m) => (m.id === currentMechanic.id ? updatedMech : m)));
+
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('routerescue_active_incident');
+      window.dispatchEvent(new Event('local-storage-sync'));
+    }
+
+    try {
+      const payload = {
+        id: String(resolvedIncident.id),
+        category: resolvedIncident.category,
+        lat: Number(resolvedIncident.lat),
+        lng: Number(resolvedIncident.lng),
+        status: 'Resolved',
+        base_tariff: Number(resolvedIncident.baseTariff || 1000),
+        timestamp: resolvedIncident.timestamp || new Date().toISOString(),
+        mechanic_id: String(currentMechanic.id),
+        distance_km: Number(resolvedIncident.distanceKm || 0),
+        driver_name: resolvedIncident.driverName || 'Anonymous Motorist',
+        driver_phone: resolvedIncident.driverPhone || '',
+        assigned_employee: resolvedIncident.assignedEmployee || null,
+      };
+
+      const { error } = await supabase.from('incidents').upsert([payload]);
+      if (error) {
+        console.error('Supabase incident resolve error:', error);
+      }
+    } catch (err) {
+      console.error('Error saving resolved incident to Supabase:', err);
+    }
+  };
+
+  const completedJobsForGarage = currentMechanic
+    ? incidents.filter((i) => String(i.mechanicId) === String(currentMechanic.id) && i.status === 'Resolved')
+    : [];
 
   const handleUpdatePassword = (e: React.FormEvent) => {
     e.preventDefault();
@@ -931,6 +977,17 @@ export default function MechanicPortal() {
               </button>
 
               <button
+                onClick={() => setActiveTab('history')}
+                className={`pb-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'history'
+                    ? 'border-accent-green text-accent-green'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                  }`}
+              >
+                <FileText size={14} />
+                <span>Completed History ({completedJobsForGarage.length})</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('settings')}
                 className={`pb-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'settings'
                     ? 'border-accent-green text-accent-green'
@@ -1035,16 +1092,8 @@ export default function MechanicPortal() {
                             </div>
 
                             <button
-                              onClick={() => {
-                                const updated = incidents.map((i) => (i.id === inc.id ? { ...i, status: 'Resolved' as const } : i));
-                                const updatedActiveJobs = Math.max(0, (currentMechanic.activeJobs || 1) - 1);
-                                const updatedMech = { ...currentMechanic, activeJobs: updatedActiveJobs };
-
-                                setIncidents(updated);
-                                setCurrentMechanic(updatedMech);
-                                setMechanics(mechanics.map((m) => (m.id === currentMechanic.id ? updatedMech : m)));
-                              }}
-                              className="py-1.5 px-3 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold cursor-pointer"
+                              onClick={() => handleResolveIncidentByMechanic(inc)}
+                              className="py-1.5 px-3 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold cursor-pointer hover:bg-emerald-500/30 transition-all"
                             >
                               Resolve & Free Staff
                             </button>
@@ -1139,7 +1188,79 @@ export default function MechanicPortal() {
               </div>
             )}
 
-            {/* TAB 3: Account & Security */}
+            {/* TAB 3: Completed Service History */}
+            {activeTab === 'history' && (
+              <div className="space-y-6">
+                <div className="glass-panel p-5 rounded-2xl border-slate-800 space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <div>
+                      <h3 className="text-xs font-black text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                        <CheckCircle className="text-emerald-400" size={16} />
+                        <span>Completed Service Breakdown Log</span>
+                      </h3>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Full audit history of all emergency repairs and roadside dispatch jobs completed by {currentMechanic.businessName || currentMechanic.name}.
+                      </p>
+                    </div>
+                    <span className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full font-bold border border-emerald-500/30">
+                      {completedJobsForGarage.length} Completed
+                    </span>
+                  </div>
+
+                  {completedJobsForGarage.length === 0 ? (
+                    <div className="text-center py-10 text-xs text-slate-500 flex flex-col items-center gap-2">
+                      <div className="h-10 w-10 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600">
+                        📑
+                      </div>
+                      <span>No completed rescue jobs logged yet. Resolved emergency dispatches will appear here.</span>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-800 text-[10px] text-slate-500 uppercase tracking-wider">
+                            <th className="pb-3 pt-2 font-bold">Category</th>
+                            <th className="pb-3 pt-2 font-bold">Motorist / Driver</th>
+                            <th className="pb-3 pt-2 font-bold">Assigned Technician</th>
+                            <th className="pb-3 pt-2 font-bold">Service Fee</th>
+                            <th className="pb-3 pt-2 font-bold">Timestamp</th>
+                            <th className="pb-3 pt-2 font-bold">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-850 text-slate-300">
+                          {completedJobsForGarage.map((inc) => (
+                            <tr key={inc.id} className="hover:bg-slate-900/50 transition-colors">
+                              <td className="py-3 font-extrabold text-amber-400">{inc.category}</td>
+                              <td className="py-3">
+                                <div className="font-bold text-slate-200">{inc.driverName || 'Motorist'}</div>
+                                <div className="text-[10px] text-slate-400">{inc.driverPhone || 'No Phone'}</div>
+                              </td>
+                              <td className="py-3">
+                                <div className="font-bold text-slate-200">{inc.assignedEmployee?.name || currentMechanic.name}</div>
+                                <div className="text-[10px] text-slate-400">{inc.assignedEmployee?.role || 'Lead Mechanic'}</div>
+                              </td>
+                              <td className="py-3 font-mono font-bold text-emerald-400">
+                                {(inc.baseTariff || 1000).toLocaleString()} LKR
+                              </td>
+                              <td className="py-3 text-[10px] text-slate-400">
+                                {new Date(inc.timestamp).toLocaleString()}
+                              </td>
+                              <td className="py-3">
+                                <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase">
+                                  Resolved
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: Account & Security */}
             {activeTab === 'settings' && (
               <div className="glass-panel p-5 rounded-2xl border-slate-800 space-y-6">
                 <div>

@@ -214,7 +214,21 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             if (error) console.error('Supabase mechanics upsert error:', error);
           });
         } else if (key === 'routerescue_incidents' && Array.isArray(valueToStore)) {
-          supabase.from('incidents').upsert(valueToStore).then(({ error }) => {
+          const payload = valueToStore.map((inc: any) => ({
+            id: String(inc.id),
+            category: inc.category || 'Breakdown',
+            lat: Number(inc.lat) || 6.9271,
+            lng: Number(inc.lng) || 79.8612,
+            status: inc.status || 'Request Sent',
+            base_tariff: Number(inc.baseTariff || inc.base_tariff || 1000),
+            timestamp: inc.timestamp || new Date().toISOString(),
+            mechanic_id: String(inc.mechanicId || inc.mechanic_id || ''),
+            distance_km: Number(inc.distanceKm || inc.distance_km || 0),
+            driver_name: inc.driverName || inc.driver_name || 'Anonymous Motorist',
+            driver_phone: inc.driverPhone || inc.driver_phone || '',
+            assigned_employee: inc.assignedEmployee || inc.assigned_employee || null,
+          }));
+          supabase.from('incidents').upsert(payload).then(({ error }) => {
             if (error) console.error('Supabase incidents upsert error:', error);
           });
         } else if (key === 'routerescue_admin_settings' && valueToStore) {
@@ -294,8 +308,8 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
                 nic: m.nic,
                 password: m.password,
                 city: m.city,
-                lat: Number(m.lat),
-                lng: Number(m.lng),
+                lat: Number(m.lat) && !isNaN(Number(m.lat)) ? Number(m.lat) : 6.6828,
+                lng: Number(m.lng) && !isNaN(Number(m.lng)) ? Number(m.lng) : 80.4014,
                 tier: m.tier,
                 radius: Number(m.radius),
                 status: m.status,
@@ -312,8 +326,22 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
           } else if (key === 'routerescue_incidents') {
             const { data } = await supabase.from('incidents').select('*');
             if (data) {
-              setState(data as unknown as T);
-              window.localStorage.setItem(key, JSON.stringify(data));
+              const mapped = data.map((inc: any) => ({
+                id: String(inc.id),
+                category: inc.category,
+                lat: Number(inc.lat),
+                lng: Number(inc.lng),
+                status: inc.status,
+                baseTariff: Number(inc.base_tariff || inc.baseTariff || 1000),
+                timestamp: inc.timestamp,
+                mechanicId: inc.mechanic_id || inc.mechanicId,
+                distanceKm: Number(inc.distance_km || inc.distanceKm || 0),
+                driverName: inc.driver_name || inc.driverName,
+                driverPhone: inc.driver_phone || inc.driverPhone,
+                assignedEmployee: inc.assigned_employee || inc.assignedEmployee,
+              }));
+              setState(mapped as unknown as T);
+              window.localStorage.setItem(key, JSON.stringify(mapped));
             }
           } else if (key === 'routerescue_admin_settings') {
             const { data } = await supabase.from('admin_settings').select('*');

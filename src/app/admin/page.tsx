@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, ShieldAlert, Key, UserCheck, CreditCard, Map, Info, Star,
   Building2, Users, Settings, Eye, RefreshCw, X, AlertTriangle, FileText,
-  Calendar, Trash2, CheckCircle, Phone, Clock, ShieldCheck, MapPin, ExternalLink
+  Calendar, Trash2, CheckCircle, Phone, Clock, ShieldCheck, MapPin, ExternalLink, LogOut
 } from 'lucide-react';
 import { useSharedState, Incident, Mechanic, SEED_MECHANICS, DEFAULT_ADMIN_SETTINGS, AdminSettings, SubscriptionPlan, DEFAULT_PLANS } from '../../utils/store';
 import { supabase } from '../../utils/supabase';
@@ -471,6 +471,14 @@ export default function SuperAdminDashboard() {
     );
   }
 
+  const handleAdminLogout = () => {
+    setIsAdmin(false);
+    setPasscode('');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('admin_session');
+    }
+  };
+
   return (
     <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col px-4 py-6 relative overflow-x-hidden select-none">
       {/* Brand Header */}
@@ -482,11 +490,20 @@ export default function SuperAdminDashboard() {
           <ArrowLeft size={14} />
           <span>Home</span>
         </button>
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="text-red-400" size={18} />
-          <span className="text-sm font-extrabold uppercase tracking-wider text-slate-200">
-            Super Admin Control Center
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="text-red-400" size={18} />
+            <span className="text-sm font-extrabold uppercase tracking-wider text-slate-200 hidden sm:inline">
+              Super Admin Control Center
+            </span>
+          </div>
+          <button
+            onClick={handleAdminLogout}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-extrabold transition-all cursor-pointer"
+          >
+            <LogOut size={13} />
+            <span>Log Out</span>
+          </button>
         </div>
       </header>
 

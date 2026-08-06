@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Phone, ArrowLeft, Key, User, Lock, FileText, MapPin, Compass, LogOut } from 'lucide-react';
 import { useSharedState, Incident, Mechanic, Driver, SEED_MECHANICS, calculateDistanceKm, SRI_LANKA_REGIONS } from '../../utils/store';
+import { supabase } from '../../utils/supabase';
 import MapDashboard from '../../components/MapDashboard';
 import TriageDrawer from '../../components/TriageDrawer';
 import LiveTracker from '../../components/LiveTracker';
@@ -393,23 +394,51 @@ export default function MotoristPortal() {
     );
   };
 
-  const handleResolveIncident = () => {
+  const handleResolveIncident = async () => {
     if (!activeIncident) return;
-    const closedIncidents = incidents.filter((i) => i.id !== activeIncident.id);
-    setIncidents(closedIncidents);
+    const resolvedIncident: Incident = { ...activeIncident, status: 'Resolved' };
+    const updatedIncidents = incidents.map((i) => (i.id === activeIncident.id ? resolvedIncident : i));
+
+    setIncidents(updatedIncidents);
     setActiveIncident(null);
     setActiveView('map');
 
-    const matchedMech = SEED_MECHANICS.find((m) => String(m.id) === String(activeIncident.mechanicId));
-    const originalPos = matchedMech ? [matchedMech.lat, matchedMech.lng] : CITIES[0].coords;
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('routerescue_active_incident');
+      window.dispatchEvent(new Event('local-storage-sync'));
+    }
 
     setMechanics((prev) =>
       prev.map((m) =>
         String(m.id) === String(activeIncident.mechanicId)
-          ? { ...m, isAvailable: true, lat: originalPos[0], lng: originalPos[1] }
+          ? { ...m, isAvailable: true }
           : m
       )
     );
+
+    try {
+      const payload = {
+        id: String(resolvedIncident.id),
+        category: resolvedIncident.category,
+        lat: Number(resolvedIncident.lat),
+        lng: Number(resolvedIncident.lng),
+        status: 'Resolved',
+        base_tariff: Number(resolvedIncident.baseTariff || 1000),
+        timestamp: resolvedIncident.timestamp || new Date().toISOString(),
+        mechanic_id: String(resolvedIncident.mechanicId || ''),
+        distance_km: Number(resolvedIncident.distanceKm || 0),
+        driver_name: resolvedIncident.driverName || 'Anonymous Motorist',
+        driver_phone: resolvedIncident.driverPhone || '',
+        assigned_employee: resolvedIncident.assignedEmployee || null,
+      };
+
+      const { error } = await supabase.from('incidents').upsert([payload]);
+      if (error) {
+        console.error('Supabase incident resolve error:', error);
+      }
+    } catch (err) {
+      console.error('Error writing resolved incident to Supabase:', err);
+    }
   };
 
   const isIncidentActive = activeIncident !== null;
