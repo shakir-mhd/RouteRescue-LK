@@ -96,8 +96,8 @@ export default function MechanicPortal() {
   const [activeTab, setActiveTab] = useState<'dispatch' | 'roster' | 'history' | 'settings'>('dispatch');
 
   // Login & Registration State
-  const [loginPhone, setLoginPhone] = useState('0719876543');
-  const [loginPassword, setLoginPassword] = useState('1234');
+  const [loginPhone, setLoginPhone] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [name, setName] = useState('');
   const [businessName, setBusinessName] = useState('');
@@ -748,7 +748,7 @@ export default function MechanicPortal() {
                     value={loginPhone}
                     onChange={(e) => setLoginPhone(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
-                    placeholder="0719876543"
+                    placeholder="e.g. 0771234567"
                     required
                   />
                 </div>
@@ -762,7 +762,7 @@ export default function MechanicPortal() {
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
-                    placeholder="••••••••"
+                    placeholder="Enter your garage password"
                     required
                   />
                 </div>
