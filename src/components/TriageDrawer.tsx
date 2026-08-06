@@ -14,6 +14,7 @@ interface Mechanic {
   tier: 'Basic' | 'Premium Pro' | 'basic' | 'premium';
   radius: number;
   isAvailable?: boolean;
+  isOpen?: boolean;
   maxCapacity?: number;
   activeJobs?: number;
   pendingLocation?: any;
@@ -97,6 +98,7 @@ export default function TriageDrawer({
     const options: NearbyOption[] = [];
 
     mechanics.forEach((mech) => {
+      if (mech.isOpen === false) return; // Closed / On Leave garages cannot accept emergency calls
       const maxCap = mech.maxCapacity || (mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium' ? 5 : 3);
       const activeJobsCount = mech.activeJobs || 0;
       if (activeJobsCount >= maxCap) return;

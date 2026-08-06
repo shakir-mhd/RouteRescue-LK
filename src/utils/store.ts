@@ -42,6 +42,7 @@ export interface Mechanic {
   nic: string;
   password?: string;
   isAvailable?: boolean;
+  isOpen?: boolean;
   employees: Employee[];
   activeJobs?: number;
   maxCapacity?: number;

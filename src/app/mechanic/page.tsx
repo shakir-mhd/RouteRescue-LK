@@ -63,6 +63,7 @@ interface Mechanic {
   password?: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   isAvailable?: boolean;
+  isOpen?: boolean;
   activeJobs?: number;
   maxCapacity?: number;
   employees?: Employee[];
@@ -508,6 +509,29 @@ export default function MechanicPortal() {
       await supabase.from('garage_employees').delete().eq('id', String(empId));
     } catch (err) {
       console.error('Supabase employee delete error:', err);
+    }
+  };
+
+  const handleToggleOperatingStatus = async () => {
+    if (!currentMechanic) return;
+    const newOpenState = currentMechanic.isOpen === false ? true : false;
+    const updatedMech = { ...currentMechanic, isOpen: newOpenState };
+
+    setCurrentMechanic(updatedMech);
+    setMechanics(mechanics.map((m) => (m.id === currentMechanic.id ? updatedMech : m)));
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mechanic_session', JSON.stringify(updatedMech));
+      window.dispatchEvent(new Event('local-storage-sync'));
+    }
+
+    try {
+      await supabase
+        .from('mechanics')
+        .update({ is_open: newOpenState })
+        .eq('id', String(currentMechanic.id));
+    } catch (err) {
+      console.error('Error toggling operating status in Supabase:', err);
     }
   };
 
@@ -1044,19 +1068,50 @@ export default function MechanicPortal() {
                     </div>
                   </div>
 
-                  {/* Active Job Capacity Counter Widget */}
-                  <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 flex items-center gap-4 shrink-0 w-full md:w-auto justify-between">
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider block">Active Job Capacity</span>
-                      <div className="text-sm font-extrabold text-slate-100 mt-0.5 flex items-center gap-1.5">
-                        <span className={activeJobCount >= maxCap ? 'text-red-400 font-black' : 'text-accent-green font-black'}>
-                          {activeJobCount} / {maxCap}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                    {/* Operational Duty Status Toggle Widget */}
+                    <button
+                      onClick={handleToggleOperatingStatus}
+                      className={`px-4 py-3 rounded-xl border flex items-center justify-between sm:justify-center gap-2.5 transition-all cursor-pointer shadow-md active:scale-95 ${
+                        currentMechanic.isOpen !== false
+                          ? 'bg-emerald-950/40 border-emerald-500/50 hover:bg-emerald-900/50 text-emerald-300'
+                          : 'bg-red-950/40 border-red-500/50 hover:bg-red-900/50 text-red-300'
+                      }`}
+                      title="Click to toggle garage operating status (Open / Closed for holiday)"
+                    >
+                      <div className="flex items-center gap-2 text-left">
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${currentMechanic.isOpen !== false ? 'bg-emerald-400' : 'bg-red-400'}`}></span>
+                          <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${currentMechanic.isOpen !== false ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
                         </span>
-                        <span className="text-xs text-slate-400 font-semibold">Active Jobs</span>
+                        <div>
+                          <div className="text-xs font-black uppercase tracking-wider">
+                            {currentMechanic.isOpen !== false ? '🟢 GARAGE OPEN TODAY' : '🔴 CLOSED / ON LEAVE'}
+                          </div>
+                          <div className="text-[9px] text-slate-400 font-medium">
+                            {currentMechanic.isOpen !== false ? 'Accepting motorist emergency requests' : 'Hidden from driver booking drawer'}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="h-9 w-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-bold text-slate-300">
-                      {Math.round((activeJobCount / maxCap) * 100)}%
+                      <span className="text-[10px] bg-slate-900/80 px-2 py-1 rounded font-bold border border-slate-700">
+                        Toggle
+                      </span>
+                    </button>
+
+                    {/* Active Job Capacity Counter Widget */}
+                    <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 flex items-center gap-4 shrink-0 justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider block">Active Job Capacity</span>
+                        <div className="text-sm font-extrabold text-slate-100 mt-0.5 flex items-center gap-1.5">
+                          <span className={activeJobCount >= maxCap ? 'text-red-400 font-black' : 'text-accent-green font-black'}>
+                            {activeJobCount} / {maxCap}
+                          </span>
+                          <span className="text-xs text-slate-400 font-semibold">Active Jobs</span>
+                        </div>
+                      </div>
+                      <div className="h-9 w-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-bold text-slate-300">
+                        {Math.round((activeJobCount / maxCap) * 100)}%
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -22,6 +22,7 @@ interface Mechanic {
   lng: number;
   tier: 'Basic' | 'Premium Pro' | 'basic' | 'premium';
   isAvailable?: boolean;
+  isOpen?: boolean;
   maxCapacity?: number;
   activeJobs?: number;
   pendingLocation?: any;
@@ -353,10 +354,12 @@ export default function MapInner({
                   )}
                 </div>
                 <div className="text-slate-400 mt-1 flex items-center gap-1 font-medium">
-                  {isFull ? (
+                  {mech.isOpen === false ? (
+                    <span className="text-red-400 font-bold bg-red-950/40 px-2 py-0.5 rounded border border-red-500/30">🔴 CLOSED / ON LEAVE (Off-Duty)</span>
+                  ) : isFull ? (
                     <span className="text-amber-400 font-bold">🟡 Full Capacity ({activeJobsCount}/{maxCap} Jobs)</span>
                   ) : (
-                    <span className="text-emerald-400 font-bold">🟢 Available for Dispatch ({activeJobsCount}/{maxCap} Jobs)</span>
+                    <span className="text-emerald-400 font-bold">🟢 OPEN • Ready for Dispatch ({activeJobsCount}/{maxCap} Jobs)</span>
                   )}
                 </div>
                 <div className="text-[10px] text-slate-500 capitalize">Radius coverage: {mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium' ? '25km' : '5km'}</div>

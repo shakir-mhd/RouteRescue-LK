@@ -995,6 +995,7 @@ export default function SuperAdminDashboard() {
                       <th className="pb-3 pt-2 font-bold">Garage Name</th>
                       <th className="pb-3 pt-2 font-bold">City</th>
                       <th className="pb-3 pt-2 font-bold">Status</th>
+                      <th className="pb-3 pt-2 font-bold">Duty State</th>
                       <th className="pb-3 pt-2 font-bold">Tier</th>
                       <th className="pb-3 pt-2 font-bold">Roster Count</th>
                       <th className="pb-3 pt-2 font-bold text-right">Actions</th>
@@ -1016,6 +1017,17 @@ export default function SuperAdminDashboard() {
                               </span>
                             )}
                           </div>
+                        </td>
+                        <td className="py-3">
+                          {mech.isOpen === false ? (
+                            <span className="text-[9px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-extrabold">
+                              🔴 CLOSED / HOLIDAY
+                            </span>
+                          ) : (
+                            <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-extrabold">
+                              🟢 OPEN TODAY
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 font-semibold text-slate-300">{mech.tier} ({mech.radius}km)</td>
                         <td className="py-3 font-bold text-amber-400">{mech.employees?.length || 1} Staff</td>
