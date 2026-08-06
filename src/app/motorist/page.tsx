@@ -489,8 +489,10 @@ export default function MotoristPortal() {
                     />
                   </div>
                 </div>
-                <h2 className="text-base font-extrabold text-slate-100 flex items-center justify-center gap-2">
-                  <span>Driver Portal</span>
+                <h2 className="text-sm font-black text-slate-100 flex items-center justify-center gap-1.5 uppercase tracking-wide">
+                  <span className="text-orange-400">ROUTE RESCUE</span>
+                  <span className="text-emerald-400 text-[10px] bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.5 rounded font-black">LK</span>
+                  <span className="text-slate-400 font-normal">| Driver Portal</span>
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
                   {authMode === 'login' && 'Log in to request roadside assistance'}

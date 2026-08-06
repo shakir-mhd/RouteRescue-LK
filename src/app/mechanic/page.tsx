@@ -729,8 +729,12 @@ export default function MechanicPortal() {
                   />
                 </div>
               </div>
-              <h2 className="text-xl font-black text-slate-100">
-                {isRegisterMode ? 'New Garage Signup' : 'Garage Portal Login'}
+              <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-slate-400 mb-1">
+                <span className="text-orange-400">ROUTE RESCUE</span>
+                <span className="text-emerald-400 bg-emerald-500/20 border border-emerald-500/30 px-1 rounded text-[9px]">LK</span>
+              </div>
+              <h2 className="text-lg font-black text-slate-100">
+                {isRegisterMode ? 'New Garage Registration' : 'Garage Portal Login'}
               </h2>
               <p className="text-xs text-slate-400 mt-1">
                 {isRegisterMode

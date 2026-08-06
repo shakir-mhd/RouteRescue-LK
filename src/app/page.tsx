@@ -53,8 +53,13 @@ export default function LandingPage() {
               />
             </div>
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight uppercase bg-gradient-to-r from-accent-orange via-amber-400 to-emerald-400 bg-clip-text text-transparent">
-            RouteRescue LK
+          <h1 className="text-3xl font-black tracking-wide flex items-center justify-center gap-2.5 flex-wrap mt-1">
+            <span className="bg-gradient-to-r from-orange-400 via-amber-400 to-amber-300 bg-clip-text text-transparent drop-shadow-md uppercase">
+              ROUTE RESCUE
+            </span>
+            <span className="bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black text-xs px-2.5 py-1 rounded-lg shadow-lg border border-emerald-300/50 uppercase tracking-widest self-center">
+              LK 🇱🇰
+            </span>
           </h1>
           <p className="text-xs text-slate-400 leading-relaxed px-4">
             Sri Lanka's Intelligent Breakdown Assistance & Road Safety Network. Connecting drivers and mechanics in real-time.
