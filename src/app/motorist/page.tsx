@@ -650,11 +650,14 @@ export default function MotoristPortal() {
                     <label className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Full Name</label>
                     <input
                       type="text"
+                      inputMode="text"
+                      autoCapitalize="words"
+                      autoComplete="name"
                       required
                       value={driverName}
                       onChange={(e) => setDriverName(e.target.value)}
                       placeholder="e.g. Priyantha Perera"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-accent-orange"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-accent-orange cursor-text"
                     />
                   </div>
 
@@ -664,11 +667,13 @@ export default function MotoristPortal() {
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500">+94</span>
                       <input
                         type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel"
                         required
                         value={phone}
                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                         placeholder="771234567"
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-accent-orange"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-accent-orange cursor-text"
                       />
                     </div>
                   </div>
@@ -677,11 +682,13 @@ export default function MotoristPortal() {
                     <label className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">National Identity Card (NIC)</label>
                     <input
                       type="text"
+                      inputMode="text"
+                      autoCapitalize="characters"
                       required
                       value={nic}
                       onChange={(e) => setNic(e.target.value.toUpperCase())}
                       placeholder="e.g. 199012345678 or 901234567V"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-accent-orange"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-accent-orange cursor-text"
                     />
                   </div>
 
@@ -689,11 +696,12 @@ export default function MotoristPortal() {
                     <label className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Password</label>
                     <input
                       type="password"
+                      inputMode="text"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Create password"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-accent-orange"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-accent-orange cursor-text"
                     />
                   </div>
 

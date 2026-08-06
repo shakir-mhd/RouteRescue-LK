@@ -120,7 +120,12 @@ export default function TriageDrawer({
     setNearbyGarages(options);
 
     if (options.length > 0) {
-      setSelectedGarageId(options[0].garage.id);
+      setSelectedGarageId((prev) => {
+        if (prev && options.some((opt) => String(opt.garage.id) === String(prev))) {
+          return prev;
+        }
+        return options[0].garage.id;
+      });
     } else {
       setSelectedGarageId(null);
     }
