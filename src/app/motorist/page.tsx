@@ -123,12 +123,58 @@ export default function MotoristPortal() {
     };
   }, []);
 
-  // Synchronize activeIncident with global incidents store
+  // Real-Time Heartbeat Auto-Sync: Poll Supabase 'incidents' table every 2.5 seconds
+  useEffect(() => {
+    let isMounted = true;
+
+    async function syncIncidentsFromSupabase() {
+      try {
+        const { data, error } = await supabase.from('incidents').select('*');
+        if (!error && data && isMounted) {
+          const formattedIncidents: Incident[] = data.map((d: any) => ({
+            id: String(d.id),
+            category: String(d.category || 'Breakdown'),
+            lat: Number(d.lat),
+            lng: Number(d.lng),
+            status: d.status as any,
+            baseTariff: Number(d.base_tariff || d.baseTariff || 1000),
+            timestamp: String(d.timestamp || new Date().toISOString()),
+            mechanicId: String(d.mechanic_id || d.mechanicId || ''),
+            distanceKm: Number(d.distance_km || d.distanceKm || 0),
+            driverName: d.driver_name ? String(d.driver_name) : undefined,
+            driverPhone: d.driver_phone ? String(d.driver_phone) : undefined,
+            assignedEmployee: d.assigned_employee || undefined,
+          }));
+
+          setIncidents(formattedIncidents);
+        }
+      } catch (err) {
+        console.error('Real-time motorist incidents heartbeat error:', err);
+      }
+    }
+
+    syncIncidentsFromSupabase();
+    const interval = setInterval(syncIncidentsFromSupabase, 2500);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [setIncidents]);
+
+  // Synchronize activeIncident with global incidents store live
   useEffect(() => {
     if (activeIncident) {
-      const matched = incidents.find((i) => i.id === activeIncident.id);
-      if (matched && (matched.status !== activeIncident.status || matched.assignedEmployee?.name !== activeIncident.assignedEmployee?.name)) {
-        setActiveIncident(matched);
+      const matched = incidents.find((i) => String(i.id) === String(activeIncident.id));
+      if (matched) {
+        if (
+          matched.status !== activeIncident.status ||
+          matched.assignedEmployee?.name !== activeIncident.assignedEmployee?.name
+        ) {
+          setActiveIncident(matched);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('routerescue_active_incident', JSON.stringify(matched));
+          }
+        }
       }
     }
   }, [incidents, activeIncident, setActiveIncident]);
