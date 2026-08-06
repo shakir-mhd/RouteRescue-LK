@@ -42,7 +42,7 @@ interface MapDashboardProps {
 const MapInner = dynamic(() => import('./MapInner'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-slate-400 gap-3">
+    <div className="w-full h-full min-h-[450px] flex flex-col items-center justify-center bg-slate-950 text-slate-400 gap-3">
       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-accent-orange"></div>
       <span className="text-xs font-semibold tracking-wider">Loading Safety Radar...</span>
     </div>

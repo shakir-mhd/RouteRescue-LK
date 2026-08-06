@@ -788,7 +788,7 @@ export default function MotoristPortal() {
 
           {/* Primary View Router */}
           <main className="flex-grow flex flex-col relative w-full h-full overflow-hidden">
-            <div className={`w-full h-full flex flex-col ${activeView === 'map' ? 'block' : 'hidden'}`}>
+            <div className={`w-full h-full flex-grow flex flex-col ${activeView === 'map' ? 'flex' : 'hidden'}`}>
               <MapDashboard
                 userLocation={userLocation}
                 mapCenter={mapCenter}
