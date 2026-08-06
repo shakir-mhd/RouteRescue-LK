@@ -359,7 +359,7 @@ export default function MechanicPortal() {
     }
   };
 
-  const handleSaveEmployee = (e: React.FormEvent) => {
+  const handleSaveEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentMechanic) return;
     if (!empName || !empPhone) {
@@ -386,6 +386,35 @@ export default function MechanicPortal() {
     setCurrentMechanic(updatedMech);
     setMechanics(mechanics.map((m) => (m.id === currentMechanic.id ? updatedMech : m)));
 
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mechanic_session', JSON.stringify(updatedMech));
+    }
+
+    try {
+      const payload = {
+        id: String(updatedMech.id),
+        name: updatedMech.name,
+        phone: updatedMech.phone,
+        nic: updatedMech.nic || '',
+        password: updatedMech.password || '',
+        city: updatedMech.city || 'Colombo',
+        lat: Number(updatedMech.lat),
+        lng: Number(updatedMech.lng),
+        tier: updatedMech.tier || 'Basic',
+        radius: Number(updatedMech.radius) || 5,
+        status: updatedMech.status || 'Approved',
+        business_name: updatedMech.businessName || updatedMech.name,
+        is_available: updatedMech.isAvailable,
+        active_jobs: updatedMech.activeJobs || 0,
+        max_capacity: updatedMech.maxCapacity || 3,
+        employees: updatedEmployees,
+        pending_location: updatedMech.pendingLocation || null,
+      };
+      await supabase.from('mechanics').upsert([payload]);
+    } catch (err) {
+      console.error('Supabase employee save error:', err);
+    }
+
     setIsEmployeeModalOpen(false);
     setEditingEmployee(null);
     setEmpName('');
@@ -393,12 +422,41 @@ export default function MechanicPortal() {
     setEmpRole('General Mechanic');
   };
 
-  const handleDeleteEmployee = (empId: string | number) => {
+  const handleDeleteEmployee = async (empId: string | number) => {
     if (!currentMechanic) return;
     const updatedEmployees = (currentMechanic.employees || []).filter((emp) => emp.id !== empId);
     const updatedMech = { ...currentMechanic, employees: updatedEmployees };
     setCurrentMechanic(updatedMech);
     setMechanics(mechanics.map((m) => (m.id === currentMechanic.id ? updatedMech : m)));
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mechanic_session', JSON.stringify(updatedMech));
+    }
+
+    try {
+      const payload = {
+        id: String(updatedMech.id),
+        name: updatedMech.name,
+        phone: updatedMech.phone,
+        nic: updatedMech.nic || '',
+        password: updatedMech.password || '',
+        city: updatedMech.city || 'Colombo',
+        lat: Number(updatedMech.lat),
+        lng: Number(updatedMech.lng),
+        tier: updatedMech.tier || 'Basic',
+        radius: Number(updatedMech.radius) || 5,
+        status: updatedMech.status || 'Approved',
+        business_name: updatedMech.businessName || updatedMech.name,
+        is_available: updatedMech.isAvailable,
+        active_jobs: updatedMech.activeJobs || 0,
+        max_capacity: updatedMech.maxCapacity || 3,
+        employees: updatedEmployees,
+        pending_location: updatedMech.pendingLocation || null,
+      };
+      await supabase.from('mechanics').upsert([payload]);
+    } catch (err) {
+      console.error('Supabase employee delete error:', err);
+    }
   };
 
   const handleDispatchEmployee = (incidentId: string) => {
