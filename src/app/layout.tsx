@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 
@@ -77,6 +79,8 @@ export default function RootLayout({
       <body className={`${geistSans.className} bg-slate-950 text-slate-100 min-h-full flex flex-col antialiased`}>
         <PWAInstallBanner />
         {children}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
