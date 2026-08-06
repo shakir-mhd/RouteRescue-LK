@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Phone, ArrowLeft, Key, User, Lock, FileText, MapPin, Compass, LogOut } from 'lucide-react';
+import { Phone, ArrowLeft, Key, User, Lock, FileText, MapPin, Compass, LogOut, Navigation, AlertTriangle } from 'lucide-react';
 import { useSharedState, Incident, Mechanic, Driver, SEED_MECHANICS, calculateDistanceKm, SRI_LANKA_REGIONS } from '../../utils/store';
 import { supabase } from '../../utils/supabase';
 import MapDashboard from '../../components/MapDashboard';
@@ -829,9 +829,23 @@ export default function MotoristPortal() {
             onSubmitIncident={handleSubmitIncident}
           />
 
-          {/* Mobile Bottom Navigation Bar */}
-          <nav className="fixed bottom-0 left-0 right-0 z-[1000] px-4 pb-5 pt-2 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent">
-            <div className="max-w-md mx-auto glass-panel rounded-2xl flex items-center justify-around py-2 px-3 shadow-2xl">
+          {/* Mobile Bottom Action & Navigation Bar */}
+          <nav className="fixed bottom-0 left-0 right-0 z-[1000] px-4 pb-5 pt-2 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent pointer-events-none">
+            <div className="max-w-md mx-auto flex flex-col gap-2.5 pointer-events-auto">
+              {!reportMode && activeView === 'map' && (
+                <button
+                  onClick={() => {
+                    setReportLocation(userLocation);
+                    setReportMode(true);
+                  }}
+                  className="w-full py-3.5 px-5 bg-gradient-to-r from-accent-orange via-orange-500 to-red-600 text-white font-black text-xs sm:text-sm rounded-2xl shadow-[0_0_30px_rgba(249,115,22,0.45)] hover:shadow-orange-950/60 active:scale-[0.98] transition-all flex items-center justify-center gap-2 border-2 border-orange-300 cursor-pointer uppercase tracking-wider animate-pulse"
+                >
+                  <Navigation size={18} className="animate-bounce shrink-0" />
+                  <span>Report Breakdown & Triage</span>
+                </button>
+              )}
+
+              <div className="glass-panel rounded-2xl flex items-center justify-around py-2 px-3 shadow-2xl">
               <button
                 onClick={() => {
                   setReportMode(false);
@@ -876,7 +890,8 @@ export default function MotoristPortal() {
                 </div>
               </button>
             </div>
-          </nav>
+          </div>
+        </nav>
         </>
       )}
     </div>
