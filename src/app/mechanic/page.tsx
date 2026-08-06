@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   MapPin,
   FileText,
+  Power,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS } from '@/utils/store';
@@ -1069,33 +1070,69 @@ export default function MechanicPortal() {
                   </div>
 
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-                    {/* Operational Duty Status Toggle Widget */}
+                    {/* Operational Engine Start / Duty Switch Widget */}
                     <button
                       onClick={handleToggleOperatingStatus}
-                      className={`px-4 py-3 rounded-xl border flex items-center justify-between sm:justify-center gap-2.5 transition-all cursor-pointer shadow-md active:scale-95 ${
+                      className={`relative group px-5 py-3 rounded-2xl border transition-all duration-300 cursor-pointer shadow-xl overflow-hidden active:scale-95 flex items-center gap-3.5 ${
                         currentMechanic.isOpen !== false
-                          ? 'bg-emerald-950/40 border-emerald-500/50 hover:bg-emerald-900/50 text-emerald-300'
-                          : 'bg-red-950/40 border-red-500/50 hover:bg-red-900/50 text-red-300'
+                          ? 'bg-gradient-to-r from-emerald-950/90 via-slate-900 to-teal-950/90 border-emerald-500/50 hover:border-emerald-400 shadow-emerald-950/50'
+                          : 'bg-gradient-to-r from-slate-950 via-slate-900 to-red-950/80 border-red-500/40 hover:border-red-400 shadow-red-950/50'
                       }`}
-                      title="Click to toggle garage operating status (Open / Closed for holiday)"
+                      title="Click to turn Garage Engine Power ON/OFF"
                     >
-                      <div className="flex items-center gap-2 text-left">
-                        <span className="relative flex h-2.5 w-2.5">
-                          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${currentMechanic.isOpen !== false ? 'bg-emerald-400' : 'bg-red-400'}`}></span>
-                          <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${currentMechanic.isOpen !== false ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                        </span>
-                        <div>
-                          <div className="text-xs font-black uppercase tracking-wider">
-                            {currentMechanic.isOpen !== false ? '🟢 GARAGE OPEN TODAY' : '🔴 CLOSED / ON LEAVE'}
-                          </div>
-                          <div className="text-[9px] text-slate-400 font-medium">
-                            {currentMechanic.isOpen !== false ? 'Accepting motorist emergency requests' : 'Hidden from driver booking drawer'}
+                      {/* Ambient Glow Backdrop */}
+                      <div className={`absolute -inset-1 rounded-2xl blur-md opacity-40 group-hover:opacity-100 transition duration-500 pointer-events-none ${
+                        currentMechanic.isOpen !== false ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-red-600 to-amber-600'
+                      }`} />
+
+                      {/* 3D Circular Metallic Engine Ignition Button Icon */}
+                      <div className="relative z-10 flex items-center justify-center shrink-0">
+                        <div className={`h-11 w-11 rounded-full p-0.5 transition-all duration-300 shadow-lg ${
+                          currentMechanic.isOpen !== false
+                            ? 'bg-gradient-to-b from-emerald-400 to-teal-700 shadow-emerald-500/50'
+                            : 'bg-gradient-to-b from-slate-700 to-red-900 shadow-red-900/40'
+                        }`}>
+                          <div className={`h-full w-full rounded-full flex flex-col items-center justify-center border transition-all ${
+                            currentMechanic.isOpen !== false
+                              ? 'bg-slate-950 border-emerald-400/60 text-emerald-400'
+                              : 'bg-slate-950 border-red-500/40 text-red-500'
+                          }`}>
+                            <Power size={18} className={`transition-transform duration-300 group-hover:scale-110 ${currentMechanic.isOpen !== false ? 'drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]' : ''}`} />
                           </div>
                         </div>
                       </div>
-                      <span className="text-[10px] bg-slate-900/80 px-2 py-1 rounded font-bold border border-slate-700">
-                        Toggle
-                      </span>
+
+                      {/* Operational Duty Info Panel */}
+                      <div className="relative z-10 text-left">
+                        <div className="flex items-center gap-1.5">
+                          <span className="relative flex h-2.5 w-2.5">
+                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                              currentMechanic.isOpen !== false ? 'bg-emerald-400' : 'bg-red-400'
+                            }`}></span>
+                            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                              currentMechanic.isOpen !== false ? 'bg-emerald-500' : 'bg-red-500'
+                            }`}></span>
+                          </span>
+                          <span className={`text-xs font-black uppercase tracking-wider ${
+                            currentMechanic.isOpen !== false ? 'text-emerald-300' : 'text-red-400'
+                          }`}>
+                            {currentMechanic.isOpen !== false ? 'START ENGINE • ON DUTY' : 'ENGINE OFF • HOLIDAY'}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                          {currentMechanic.isOpen !== false
+                            ? '⚡ Garage active & receiving driver requests'
+                            : '🛑 Garage closed • Hidden from driver booking'}
+                        </p>
+                      </div>
+
+                      <div className={`relative z-10 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ml-auto shrink-0 ${
+                        currentMechanic.isOpen !== false
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                          : 'bg-red-500/20 text-red-400 border-red-500/40'
+                      }`}>
+                        {currentMechanic.isOpen !== false ? 'ONLINE' : 'OFFLINE'}
+                      </div>
                     </button>
 
                     {/* Active Job Capacity Counter Widget */}

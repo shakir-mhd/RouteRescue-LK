@@ -868,27 +868,30 @@ export default function MotoristPortal() {
       {isLoggedIn && (
         <>
           {/* Header Bar */}
-          <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-slate-950/85 backdrop-blur-md border-b border-slate-900 flex items-center justify-between px-4">
+          <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-slate-950/80 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-4 shadow-xl">
             <button
               onClick={() => router.push('/')}
-              className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-slate-200 cursor-pointer"
+              className="flex items-center gap-1.5 text-xs font-black text-slate-300 hover:text-white bg-slate-900/80 hover:bg-slate-850 border border-slate-800 px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
             >
-              <ArrowLeft size={14} />
-              <span className="hidden sm:inline">Home</span>
+              <ArrowLeft size={14} className="text-orange-400" />
+              <span className="hidden sm:inline">Return Home</span>
             </button>
 
             {/* City Preset Selector Dropdown */}
             {!reportMode && !isIncidentActive && (
-              <div className="flex items-center gap-1 bg-slate-900/60 border border-slate-800 rounded-xl px-2.5 py-1 text-xs">
-                <MapPin size={13} className="text-accent-orange animate-pulse" />
+              <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs shadow-lg">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
                 <select
                   value={selectedCity.name}
                   onChange={(e) => handleCityChange(e.target.value)}
-                  className="bg-transparent text-slate-200 font-bold text-xs focus:outline-none cursor-pointer pr-1"
+                  className="bg-transparent text-slate-100 font-black text-xs focus:outline-none cursor-pointer pr-1"
                 >
                   {CITIES.map((c) => (
-                    <option key={c.name} value={c.name} className="bg-slate-900 text-slate-200">
-                      {c.name}
+                    <option key={c.name} value={c.name} className="bg-slate-950 text-slate-200">
+                      📍 {c.name}
                     </option>
                   ))}
                 </select>
@@ -896,23 +899,24 @@ export default function MotoristPortal() {
             )}
 
             {isIncidentActive && (
-              <span className="text-[10px] bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-0.5 rounded-full font-bold uppercase tracking-wider animate-pulse flex items-center gap-1.5">
-                <Compass size={12} className="animate-spin" />
-                <span>Tracking Rescue</span>
+              <span className="text-[10px] bg-red-950/60 text-red-400 border border-red-500/50 px-3.5 py-1 rounded-full font-black uppercase tracking-wider animate-pulse flex items-center gap-1.5 shadow-md">
+                <Compass size={13} className="animate-spin text-orange-400" />
+                <span>Rescue Tracking Live</span>
               </span>
             )}
 
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-200 bg-slate-900/90 px-3 py-1 rounded-full border border-slate-800 flex items-center gap-1">
-                <span>👤 {driverName}</span>
+              <span className="text-[10px] font-black text-slate-200 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800 flex items-center gap-1.5 shadow-sm">
+                <span className="text-orange-400">👤</span>
+                <span>{driverName}</span>
               </span>
               <button
                 onClick={handleDriverLogout}
-                className="flex items-center gap-1 text-[10px] font-bold text-red-400 hover:text-red-300 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 px-2.5 py-1 rounded-full transition-all cursor-pointer shadow-sm active:scale-95"
+                className="flex items-center gap-1 text-[10px] font-black text-red-400 hover:text-red-300 bg-red-950/40 hover:bg-red-900/60 border border-red-500/40 px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
                 title="Log Out of Driver Account"
               >
                 <LogOut size={11} />
-                <span>Log Out</span>
+                <span className="hidden sm:inline">Log Out</span>
               </button>
             </div>
           </header>
