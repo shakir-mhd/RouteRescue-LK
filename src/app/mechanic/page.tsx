@@ -1158,8 +1158,14 @@ export default function MechanicPortal() {
                           <div key={inc.id} className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex justify-between items-center">
                             <div>
                               <span className="text-xs font-bold text-accent-yellow">{inc.category}</span>
-                              <div className="text-xs text-slate-400 mt-1">
-                                Technician: <span className="text-slate-200 font-semibold">{inc.assignedEmployee?.name || currentMechanic.name}</span> ({inc.assignedEmployee?.role || 'Lead Mechanic'})
+                              <div className="text-xs text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
+                                <span>Technician: <span className="text-slate-200 font-semibold">{inc.assignedEmployee?.name || currentMechanic.name}</span> ({inc.assignedEmployee?.role || 'Lead Mechanic'})</span>
+                                {inc.status === 'On-Site Repair' && (
+                                  <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-extrabold uppercase flex items-center gap-1 animate-pulse">
+                                    <CheckCircle size={10} />
+                                    Motorist Confirmed On-Site
+                                  </span>
+                                )}
                               </div>
                             </div>
 

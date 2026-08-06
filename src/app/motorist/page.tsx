@@ -420,6 +420,39 @@ export default function MotoristPortal() {
     }
   };
 
+  const handleConfirmArrivalOnSite = async () => {
+    if (!activeIncident) return;
+    const updated: Incident = { ...activeIncident, status: 'On-Site Repair' };
+    setActiveIncident(updated);
+    setIncidents((prev) => prev.map((i) => (i.id === activeIncident.id ? updated : i)));
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('routerescue_active_incident', JSON.stringify(updated));
+      window.dispatchEvent(new Event('local-storage-sync'));
+    }
+
+    try {
+      const payload = {
+        id: String(updated.id),
+        category: updated.category,
+        lat: Number(updated.lat),
+        lng: Number(updated.lng),
+        status: 'On-Site Repair',
+        base_tariff: Number(updated.baseTariff || 1000),
+        timestamp: updated.timestamp || new Date().toISOString(),
+        mechanic_id: String(updated.mechanicId || ''),
+        distance_km: Number(updated.distanceKm || 0),
+        driver_name: updated.driverName || 'Anonymous Motorist',
+        driver_phone: updated.driverPhone || '',
+        assigned_employee: updated.assignedEmployee || null,
+      };
+      const { error } = await supabase.from('incidents').upsert([payload]);
+      if (error) console.error('Supabase on-site update error:', error);
+    } catch (err) {
+      console.error('Error writing on-site status to Supabase:', err);
+    }
+  };
+
   const isIncidentActive = activeIncident !== null;
 
   return (
@@ -768,6 +801,7 @@ export default function MotoristPortal() {
                   mechanics={mechanics}
                   onCancelIncident={handleCancelIncident}
                   onResolveIncident={handleResolveIncident}
+                  onConfirmArrival={handleConfirmArrivalOnSite}
                 />
               </div>
             )}

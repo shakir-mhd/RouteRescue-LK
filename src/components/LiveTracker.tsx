@@ -26,6 +26,7 @@ interface LiveTrackerProps {
   mechanics: Mechanic[];
   onCancelIncident: () => void;
   onResolveIncident: () => void;
+  onConfirmArrival?: () => void;
 }
 
 const STEPS = [
@@ -41,6 +42,7 @@ export default function LiveTracker({
   mechanics,
   onCancelIncident,
   onResolveIncident,
+  onConfirmArrival,
 }: LiveTrackerProps) {
   const [eta, setEta] = useState<number>(12);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -254,6 +256,16 @@ export default function LiveTracker({
 
       {/* Action controls */}
       <div className="flex flex-col gap-3">
+        {(activeIncident.status === 'Mechanic Assigned' || activeIncident.status === 'Mechanic En Route') && onConfirmArrival && (
+          <button
+            onClick={onConfirmArrival}
+            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-950/40 text-center flex items-center justify-center gap-2 cursor-pointer transition-all border border-emerald-300 animate-pulse"
+          >
+            <CheckCircle2 size={16} />
+            <span>Confirm Mechanic Arrived On-Site</span>
+          </button>
+        )}
+
         {currentStepIndex >= 3 ? (
           <button
             onClick={onResolveIncident}
