@@ -718,11 +718,17 @@ export default function MechanicPortal() {
         ) : !currentMechanic ? (
           <div className="max-w-md w-full mx-auto glass-panel p-6 rounded-3xl border-slate-800 shadow-2xl my-auto">
             <div className="text-center mb-6 flex flex-col items-center">
-              <img
-                src="/logo.png"
-                alt="RouteRescue LK Logo"
-                className="h-24 w-24 object-contain drop-shadow-[0_0_25px_rgba(249,115,22,0.4)] mb-2"
-              />
+              <div className="relative group cursor-pointer mb-3">
+                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 via-amber-500 to-orange-500 rounded-[26px] blur-md opacity-60 group-hover:opacity-100 transition duration-300 animate-pulse"></div>
+                <div className="relative h-24 w-24 rounded-[22px] p-1.5 bg-slate-900/80 backdrop-blur-xl border border-white/20 shadow-xl overflow-hidden flex items-center justify-center">
+                  <div className="absolute -top-10 -left-10 w-24 h-24 bg-gradient-to-br from-white/35 via-white/5 to-transparent rounded-full blur-xs pointer-events-none z-10" />
+                  <img
+                    src="/logo.png"
+                    alt="RouteRescue LK Logo"
+                    className="h-full w-full object-cover rounded-xl"
+                  />
+                </div>
+              </div>
               <h2 className="text-xl font-black text-slate-100">
                 {isRegisterMode ? 'New Garage Signup' : 'Garage Portal Login'}
               </h2>

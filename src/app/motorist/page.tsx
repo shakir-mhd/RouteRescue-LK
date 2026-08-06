@@ -478,11 +478,17 @@ export default function MotoristPortal() {
               </button>
 
               <div className="text-center flex flex-col items-center">
-                <img
-                  src="/logo.png"
-                  alt="RouteRescue LK Logo"
-                  className="h-20 w-20 object-contain drop-shadow-[0_0_20px_rgba(249,115,22,0.4)] mb-2"
-                />
+                <div className="relative group cursor-pointer mb-3">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-orange-500 to-amber-500 rounded-[24px] blur-md opacity-60 group-hover:opacity-100 transition duration-300"></div>
+                  <div className="relative h-20 w-20 rounded-[20px] p-1.5 bg-slate-900/80 backdrop-blur-xl border border-white/20 shadow-xl overflow-hidden flex items-center justify-center">
+                    <div className="absolute -top-8 -left-8 w-20 h-20 bg-gradient-to-br from-white/35 via-white/5 to-transparent rounded-full blur-xs pointer-events-none z-10" />
+                    <img
+                      src="/logo.png"
+                      alt="RouteRescue LK Logo"
+                      className="h-full w-full object-cover rounded-lg"
+                    />
+                  </div>
+                </div>
                 <h2 className="text-base font-extrabold text-slate-100 flex items-center justify-center gap-2">
                   <span>Driver Portal</span>
                 </h2>

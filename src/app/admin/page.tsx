@@ -427,11 +427,17 @@ export default function SuperAdminDashboard() {
           </button>
 
           <div className="text-center flex flex-col items-center">
-            <img
-              src="/logo.png"
-              alt="RouteRescue LK Logo"
-              className="h-24 w-24 object-contain drop-shadow-[0_0_25px_rgba(249,115,22,0.4)] mb-2"
-            />
+            <div className="relative group cursor-pointer mb-3">
+              <div className="absolute -inset-1 bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 rounded-[26px] blur-md opacity-60 group-hover:opacity-100 transition duration-300 animate-pulse"></div>
+              <div className="relative h-24 w-24 rounded-[22px] p-1.5 bg-slate-900/80 backdrop-blur-xl border border-white/20 shadow-xl overflow-hidden flex items-center justify-center">
+                <div className="absolute -top-10 -left-10 w-24 h-24 bg-gradient-to-br from-white/35 via-white/5 to-transparent rounded-full blur-xs pointer-events-none z-10" />
+                <img
+                  src="/logo.png"
+                  alt="RouteRescue LK Logo"
+                  className="h-full w-full object-cover rounded-xl"
+                />
+              </div>
+            </div>
             <h2 className="text-lg font-extrabold text-slate-200 flex items-center justify-center gap-2">
               <ShieldAlert className="text-red-500 animate-pulse" size={20} />
               <span>Super Admin Portal</span>

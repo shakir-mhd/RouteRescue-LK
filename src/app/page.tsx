@@ -42,12 +42,16 @@ export default function LandingPage() {
           transition={{ duration: 0.5 }}
           className="flex flex-col items-center gap-3"
         >
-          <div className="relative group">
-            <img
-              src="/logo.png"
-              alt="RouteRescue LK Logo"
-              className="h-28 w-28 object-contain drop-shadow-[0_0_30px_rgba(249,115,22,0.4)] group-hover:scale-105 transition-transform duration-300"
-            />
+          <div className="relative group cursor-pointer my-2">
+            <div className="absolute -inset-1.5 bg-gradient-to-r from-orange-500 via-amber-500 to-emerald-500 rounded-[32px] blur-xl opacity-60 group-hover:opacity-100 transition duration-500 animate-pulse"></div>
+            <div className="relative h-28 w-28 rounded-[26px] p-2 bg-slate-900/80 backdrop-blur-2xl border border-white/25 shadow-[0_0_50px_rgba(249,115,22,0.35)] overflow-hidden flex items-center justify-center group-hover:scale-105 transition-all duration-300">
+              <div className="absolute -top-10 -left-10 w-28 h-28 bg-gradient-to-br from-white/40 via-white/10 to-transparent rounded-full blur-xs pointer-events-none z-10" />
+              <img
+                src="/logo.png"
+                alt="RouteRescue LK Logo"
+                className="h-full w-full object-cover rounded-xl filter contrast-[1.05]"
+              />
+            </div>
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight uppercase bg-gradient-to-r from-accent-orange via-amber-400 to-emerald-400 bg-clip-text text-transparent">
             RouteRescue LK
