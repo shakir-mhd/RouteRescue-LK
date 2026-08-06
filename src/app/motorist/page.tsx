@@ -182,20 +182,24 @@ export default function MotoristPortal() {
   };
 
   // Auth Handlers
-  const handleDriverSignup = (e: React.FormEvent) => {
+  const handleDriverSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
     setAuthSuccess('');
 
-    if (!driverName.trim()) {
+    const cleanName = driverName.trim();
+    const cleanPhone = phone.trim();
+    const cleanNic = nic.trim();
+
+    if (!cleanName) {
       setAuthError('Please enter your full name.');
       return;
     }
-    if (phone.length < 9) {
+    if (cleanPhone.length < 9) {
       setAuthError('Please enter a valid mobile number.');
       return;
     }
-    if (nic.length < 9) {
+    if (cleanNic.length < 9) {
       setAuthError('Please enter a valid NIC (e.g. 199012345678 or 901234567V).');
       return;
     }
@@ -204,45 +208,112 @@ export default function MotoristPortal() {
       return;
     }
 
+    // Check if account already exists
+    const existing = drivers.find((d) => d.mobile === cleanPhone || d.nic === cleanNic);
+    if (existing) {
+      setAuthError('⚠️ An account with this mobile number or NIC is already registered. Please click "Log In".');
+      return;
+    }
+
     const newDriver: Driver = {
       id: `drv-${Date.now()}`,
-      name: driverName.trim(),
-      mobile: phone.trim(),
-      nic: nic.trim(),
+      name: cleanName,
+      mobile: cleanPhone,
+      nic: cleanNic,
       password,
     };
 
-    setDrivers([...drivers, newDriver]);
+    setDrivers((prev) => [...prev, newDriver]);
     setIsLoggedIn(true);
+    setDriverName(cleanName);
+
     if (typeof window !== 'undefined') {
       localStorage.setItem('motorist_logged_in', 'true');
-      localStorage.setItem('motorist_phone', phone);
-      localStorage.setItem('motorist_name', driverName);
+      localStorage.setItem('motorist_phone', cleanPhone);
+      localStorage.setItem('motorist_name', cleanName);
+    }
+
+    // Save to Supabase drivers table
+    try {
+      await supabase.from('drivers').upsert([
+        {
+          id: newDriver.id,
+          name: newDriver.name,
+          mobile: newDriver.mobile,
+          nic: newDriver.nic,
+          password: newDriver.password,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+    } catch (err) {
+      console.error('Error saving driver to Supabase:', err);
     }
   };
 
-  const handleDriverLogin = (e: React.FormEvent) => {
+  const handleDriverLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
     setAuthSuccess('');
 
-    if (phone.length < 9) {
+    const cleanPhone = phone.trim();
+    const cleanPassword = password.trim();
+
+    if (cleanPhone.length < 9) {
       setAuthError('Please enter a valid mobile number.');
       return;
     }
-
-    const matched = drivers.find((d) => d.mobile === phone);
-    if (matched && matched.password && matched.password !== password) {
-      setAuthError('Incorrect password.');
+    if (!cleanPassword) {
+      setAuthError('Please enter your account password.');
       return;
     }
 
+    // 1. Check local state drivers
+    let matched = drivers.find(
+      (d) => d.mobile === cleanPhone || d.mobile.replace(/\s+/g, '') === cleanPhone.replace(/\s+/g, '')
+    );
+
+    // 2. Query Supabase drivers table if not found in local memory
+    if (!matched) {
+      try {
+        const { data, error } = await supabase
+          .from('drivers')
+          .select('*')
+          .or(`mobile.eq.${cleanPhone},phone.eq.${cleanPhone}`);
+        if (!error && data && data.length > 0) {
+          const dbObj = data[0];
+          matched = {
+            id: String(dbObj.id),
+            name: String(dbObj.name || dbObj.driver_name || 'Driver'),
+            mobile: String(dbObj.mobile || dbObj.phone || cleanPhone),
+            nic: String(dbObj.nic || ''),
+            password: dbObj.password ? String(dbObj.password) : undefined,
+          };
+          setDrivers((prev) => [...prev, matched!]);
+        }
+      } catch (err) {
+        console.error('Supabase driver verification query error:', err);
+      }
+    }
+
+    // STRICT UNREGISTERED ACCOUNT CHECK
+    if (!matched) {
+      setAuthError(`❌ Access Denied: No driver account registered for ${cleanPhone}. Please click "Register Now" to create your driver account.`);
+      return;
+    }
+
+    // STRICT PASSWORD VERIFICATION CHECK
+    if (matched.password && matched.password !== cleanPassword) {
+      setAuthError('❌ Access Denied: Incorrect password. Please check your password or use "Forgot Password?" to reset.');
+      return;
+    }
+
+    // SUCCESSFUL AUTHENTICATION
     setIsLoggedIn(true);
-    setDriverName(matched?.name || 'Stranded Driver');
+    setDriverName(matched.name);
     if (typeof window !== 'undefined') {
       localStorage.setItem('motorist_logged_in', 'true');
-      localStorage.setItem('motorist_phone', phone);
-      localStorage.setItem('motorist_name', matched?.name || 'Driver');
+      localStorage.setItem('motorist_phone', cleanPhone);
+      localStorage.setItem('motorist_name', matched.name);
     }
   };
 
