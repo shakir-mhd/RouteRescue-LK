@@ -182,6 +182,7 @@ export default function MotoristPortal() {
       setIsBrowsingRegion(true);
       setSelectedCity(city);
       setMapCenter(city.coords);
+      setUserLocation(city.coords);
       setReportLocation(city.coords);
       setMapZoom(14);
       setGpsStatus(`Inspecting: ${city.name}`);
