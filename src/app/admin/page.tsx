@@ -113,35 +113,44 @@ export default function SuperAdminDashboard() {
 
   // Subscription Plan Form State
   const [newPlanName, setNewPlanName] = useState('');
-  const [newPlanPrice, setNewPlanPrice] = useState<number | string>(3000);
-  const [newPlanRadius, setNewPlanRadius] = useState<number | string>(15);
-  const [newPlanMaxCapacity, setNewPlanMaxCapacity] = useState<number | string>(5);
+  const [newPlanPrice, setNewPlanPrice] = useState<number | string>('');
+  const [newPlanRadius, setNewPlanRadius] = useState<number | string>('');
+  const [newPlanMaxCapacity, setNewPlanMaxCapacity] = useState<number | string>('');
   const [newPlanFeature, setNewPlanFeature] = useState('');
   const [newPlanFeatures, setNewPlanFeatures] = useState<string[]>([]);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
   // Tariff & Passcode Settings Forms
-  const [newPasscode, setNewPasscode] = useState(adminSettings?.passcode || '1234');
-  const [flatRate, setFlatRate] = useState<number | string>(adminSettings?.flatRate || 1000);
-  const [perKmRate, setPerKmRate] = useState<number | string>(adminSettings?.perKmRate || 150);
+  const [newPasscode, setNewPasscode] = useState('');
+  const [flatRate, setFlatRate] = useState<number | string>('');
+  const [perKmRate, setPerKmRate] = useState<number | string>('');
   const [settingsMessage, setSettingsMessage] = useState('');
 
+  // Sync settings dynamically from database when adminSettings loads
+  useEffect(() => {
+    if (adminSettings) {
+      setNewPasscode(adminSettings.passcode ?? '');
+      setFlatRate(adminSettings.flatRate !== undefined ? adminSettings.flatRate : '');
+      setPerKmRate(adminSettings.perKmRate !== undefined ? adminSettings.perKmRate : '');
+    }
+  }, [adminSettings]);
+
   // Garage Capacity & Radius Edit State in Modal
-  const [editMaxCapacity, setEditMaxCapacity] = useState<number | string>(3);
-  const [editRadius, setEditRadius] = useState<number | string>(5);
-  const [editTier, setEditTier] = useState<string>('Basic');
+  const [editMaxCapacity, setEditMaxCapacity] = useState<number | string>('');
+  const [editRadius, setEditRadius] = useState<number | string>('');
+  const [editTier, setEditTier] = useState<string>('');
 
   useEffect(() => {
     if (selectedMechanicModal) {
-      setEditMaxCapacity(selectedMechanicModal.maxCapacity || 3);
-      setEditRadius(selectedMechanicModal.radius || 5);
-      setEditTier(selectedMechanicModal.tier || 'Basic');
+      setEditMaxCapacity(selectedMechanicModal.maxCapacity !== undefined ? selectedMechanicModal.maxCapacity : '');
+      setEditRadius(selectedMechanicModal.radius !== undefined ? selectedMechanicModal.radius : '');
+      setEditTier(selectedMechanicModal.tier || '');
     }
   }, [selectedMechanicModal]);
 
   const handleSaveMechanicCapacityAndSettings = (mechId: number | string) => {
-    const newCap = Math.max(1, Number(editMaxCapacity) || 3);
-    const newRad = Math.max(1, Number(editRadius) || 5);
+    const newCap = Number(editMaxCapacity) || 0;
+    const newRad = Number(editRadius) || 0;
     const updatedMechs = mechanics.map((m) =>
       String(m.id) === String(mechId)
         ? {
@@ -169,8 +178,8 @@ export default function SuperAdminDashboard() {
     if (!newPlanName.trim()) return;
 
     const priceNum = Number(newPlanPrice) || 0;
-    const radiusNum = Number(newPlanRadius) || 5;
-    const maxCapNum = Number(newPlanMaxCapacity) || 3;
+    const radiusNum = Number(newPlanRadius) || 0;
+    const maxCapNum = Number(newPlanMaxCapacity) || 0;
     const targetPlanName = newPlanName.trim();
 
     if (editingPlanId) {
@@ -212,9 +221,9 @@ export default function SuperAdminDashboard() {
     }
 
     setNewPlanName('');
-    setNewPlanPrice(3000);
-    setNewPlanRadius(15);
-    setNewPlanMaxCapacity(5);
+    setNewPlanPrice('');
+    setNewPlanRadius('');
+    setNewPlanMaxCapacity('');
     setNewPlanFeatures([]);
   };
 
@@ -223,7 +232,7 @@ export default function SuperAdminDashboard() {
     setNewPlanName(p.name);
     setNewPlanPrice(p.price);
     setNewPlanRadius(p.radius);
-    setNewPlanMaxCapacity(p.maxCapacity || 3);
+    setNewPlanMaxCapacity(p.maxCapacity !== undefined ? p.maxCapacity : '');
     setNewPlanFeatures(p.features || []);
   };
 

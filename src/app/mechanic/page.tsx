@@ -119,7 +119,7 @@ export default function MechanicPortal() {
   const [password, setPassword] = useState('');
   const [city, setCity] = useState('Colombo');
   const [workshopCoords, setWorkshopCoords] = useState<[number, number]>([6.9271, 79.8612]);
-  const [tier, setTier] = useState<string>('Basic');
+  const [tier, setTier] = useState<string>('');
   const [formError, setFormError] = useState('');
 
   // Employee CRUD State
@@ -140,6 +140,12 @@ export default function MechanicPortal() {
     lng: number;
     fee: number;
   } | null>(null);
+
+  useEffect(() => {
+    if (plans && plans.length > 0 && !tier) {
+      setTier(plans[0].name);
+    }
+  }, [plans, tier]);
 
   // Account Settings State
   const [settingsPassword, setSettingsPassword] = useState('');
