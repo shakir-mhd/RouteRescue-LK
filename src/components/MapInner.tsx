@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { getCancelledIncidentIds } from '../utils/store';
 
 interface Incident {
   id: string;
@@ -176,7 +177,8 @@ export default function MapInner({
 
   // Active hazards filtering
   const activeIncidents = useMemo(() => {
-    return incidents.filter((i) => i.status !== 'Cancelled' && i.status !== 'Resolved');
+    const cancelledIds = getCancelledIncidentIds();
+    return incidents.filter((i) => i.status !== 'Cancelled' && i.status !== 'Resolved' && !cancelledIds.has(String(i.id)));
   }, [incidents]);
 
   // Audio warning alert beeps logic

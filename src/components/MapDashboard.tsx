@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Volume2, VolumeX, ShieldAlert, Navigation, LocateFixed } from 'lucide-react';
 
+import { getCancelledIncidentIds } from '../utils/store';
+
 interface Incident {
   id: string;
   category: string;
@@ -67,7 +69,8 @@ export default function MapDashboard({
 
   // Active hazards filtering
   const activeIncidents = useMemo(() => {
-    return incidents.filter((i) => i.status !== 'Cancelled' && i.status !== 'Resolved');
+    const cancelledIds = getCancelledIncidentIds();
+    return incidents.filter((i) => i.status !== 'Cancelled' && i.status !== 'Resolved' && !cancelledIds.has(String(i.id)));
   }, [incidents]);
 
   // Check proximity for visual banner warning (Active non-cancelled, non-resolved hazards only)

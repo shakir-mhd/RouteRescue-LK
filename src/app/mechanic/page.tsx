@@ -26,7 +26,7 @@ import {
   Power,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS } from '@/utils/store';
+import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS, addCancelledIncidentId, getCancelledIncidentIds } from '@/utils/store';
 import { supabase } from '../../utils/supabase';
 
 const GarageLocationPickerMap = dynamic(() => import('../../components/GarageLocationPickerInner'), {
@@ -244,22 +244,25 @@ export default function MechanicPortal() {
       try {
         const { data, error } = await supabase.from('incidents').select('*');
         if (!error && data && isMounted) {
-          const formattedIncidents: Incident[] = data.map((d: any) => ({
-            id: String(d.id),
-            category: String(d.category || 'Breakdown'),
-            lat: Number(d.lat),
-            lng: Number(d.lng),
-            status: d.status as any,
-            baseTariff: Number(d.base_tariff || d.baseTariff || 1000),
-            timestamp: String(d.timestamp || new Date().toISOString()),
-            mechanicId: String(d.mechanic_id || d.mechanicId || ''),
-            distanceKm: Number(d.distance_km || d.distanceKm || 0),
-            driverName: d.driver_name ? String(d.driver_name) : undefined,
-            driverPhone: d.driver_phone ? String(d.driver_phone) : undefined,
-            assignedEmployee: d.assigned_employee || undefined,
-            cancellationReason: d.cancellation_reason ? String(d.cancellation_reason) : undefined,
-            cancelledBy: d.cancelled_by ? (String(d.cancelled_by) as any) : undefined,
-          }));
+          const cancelledIds = getCancelledIncidentIds();
+          const formattedIncidents: Incident[] = data
+            .filter((d: any) => !cancelledIds.has(String(d.id)))
+            .map((d: any) => ({
+              id: String(d.id),
+              category: String(d.category || 'Breakdown'),
+              lat: Number(d.lat),
+              lng: Number(d.lng),
+              status: d.status as any,
+              baseTariff: Number(d.base_tariff || d.baseTariff || 1000),
+              timestamp: String(d.timestamp || new Date().toISOString()),
+              mechanicId: String(d.mechanic_id || d.mechanicId || ''),
+              distanceKm: Number(d.distance_km || d.distanceKm || 0),
+              driverName: d.driver_name ? String(d.driver_name) : undefined,
+              driverPhone: d.driver_phone ? String(d.driver_phone) : undefined,
+              assignedEmployee: d.assigned_employee || undefined,
+              cancellationReason: d.cancellation_reason ? String(d.cancellation_reason) : undefined,
+              cancelledBy: d.cancelled_by ? (String(d.cancelled_by) as any) : undefined,
+            }));
 
           setIncidents((prevIncidents) => {
             const merged = [...formattedIncidents];
@@ -629,6 +632,7 @@ export default function MechanicPortal() {
       cancelledBy: 'mechanic',
     };
 
+    addCancelledIncidentId(incidentId);
     const updatedIncidents = incidents.map((i) => (i.id === incidentId ? cancelledIncident : i));
     const updatedActiveJobs = Math.max(0, (currentMechanic.activeJobs || 1) - 1);
     const updatedMech = { ...currentMechanic, activeJobs: updatedActiveJobs, isAvailable: true };

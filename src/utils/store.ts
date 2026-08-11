@@ -84,6 +84,30 @@ export interface AdminSettings {
   perKmRate: number;
 }
 
+export function getCancelledIncidentIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem('routerescue_cancelled_incident_ids');
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.map(String) : []);
+  } catch (e) {
+    return new Set();
+  }
+}
+
+export function addCancelledIncidentId(id: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    const set = getCancelledIncidentIds();
+    set.add(String(id));
+    localStorage.setItem('routerescue_cancelled_incident_ids', JSON.stringify(Array.from(set)));
+    window.dispatchEvent(new Event('local-storage-sync'));
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 export interface SubscriptionPlan {
   id: string;
   name: string;
