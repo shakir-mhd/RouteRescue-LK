@@ -1407,7 +1407,7 @@ export default function MechanicPortal() {
                       <span>Incoming Driver Booking Requests</span>
                     </h3>
                     <span className="text-[10px] text-slate-500 font-bold uppercase">
-                      Auto-Radius Filter ({currentMechanic.tier === 'Premium Pro' ? '25km' : '5km'})
+                      Auto-Radius Filter ({currentMechanic.radius || (currentMechanic.tier === 'Premium Pro' ? 25 : 5)}KM)
                     </span>
                   </div>
 

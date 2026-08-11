@@ -113,39 +113,107 @@ export default function SuperAdminDashboard() {
 
   // Subscription Plan Form State
   const [newPlanName, setNewPlanName] = useState('');
-  const [newPlanPrice, setNewPlanPrice] = useState(3000);
-  const [newPlanRadius, setNewPlanRadius] = useState(15);
+  const [newPlanPrice, setNewPlanPrice] = useState<number | string>(3000);
+  const [newPlanRadius, setNewPlanRadius] = useState<number | string>(15);
   const [newPlanFeature, setNewPlanFeature] = useState('');
   const [newPlanFeatures, setNewPlanFeatures] = useState<string[]>([]);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
   // Tariff & Passcode Settings Forms
   const [newPasscode, setNewPasscode] = useState(adminSettings?.passcode || '1234');
-  const [flatRate, setFlatRate] = useState(adminSettings?.flatRate || 1000);
-  const [perKmRate, setPerKmRate] = useState(adminSettings?.perKmRate || 150);
+  const [flatRate, setFlatRate] = useState<number | string>(adminSettings?.flatRate || 1000);
+  const [perKmRate, setPerKmRate] = useState<number | string>(adminSettings?.perKmRate || 150);
   const [settingsMessage, setSettingsMessage] = useState('');
+
+  // Garage Capacity & Radius Edit State in Modal
+  const [editMaxCapacity, setEditMaxCapacity] = useState<number | string>(3);
+  const [editRadius, setEditRadius] = useState<number | string>(5);
+  const [editTier, setEditTier] = useState<'Basic' | 'Premium Pro'>('Basic');
+
+  useEffect(() => {
+    if (selectedMechanicModal) {
+      setEditMaxCapacity(selectedMechanicModal.maxCapacity || (selectedMechanicModal.tier === 'Premium Pro' ? 5 : 3));
+      setEditRadius(selectedMechanicModal.radius || (selectedMechanicModal.tier === 'Premium Pro' ? 25 : 5));
+      setEditTier(selectedMechanicModal.tier === 'Premium Pro' ? 'Premium Pro' : 'Basic');
+    }
+  }, [selectedMechanicModal]);
+
+  const handleSaveMechanicCapacityAndSettings = (mechId: number | string) => {
+    const newCap = Math.max(1, Number(editMaxCapacity) || 3);
+    const newRad = Math.max(1, Number(editRadius) || 5);
+    const updatedMechs = mechanics.map((m) =>
+      String(m.id) === String(mechId)
+        ? {
+            ...m,
+            maxCapacity: newCap,
+            radius: newRad,
+            tier: editTier,
+          }
+        : m
+    );
+    setMechanics(updatedMechs);
+    if (selectedMechanicModal) {
+      setSelectedMechanicModal({
+        ...selectedMechanicModal,
+        maxCapacity: newCap,
+        radius: newRad,
+        tier: editTier,
+      });
+    }
+    alert(`Updated ${selectedMechanicModal?.businessName || 'Garage'}: Max Capacity set to ${newCap} jobs, Radius set to ${newRad}km!`);
+  };
 
   const handleSavePlan = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPlanName.trim()) return;
 
+    const priceNum = Number(newPlanPrice) || 0;
+    const radiusNum = Number(newPlanRadius) || 5;
+    const targetPlanName = newPlanName.trim();
+
     if (editingPlanId) {
       const updated = plans.map((p) =>
         p.id === editingPlanId
-          ? { ...p, name: newPlanName.trim(), price: Number(newPlanPrice), radius: Number(newPlanRadius), features: newPlanFeatures }
+          ? { ...p, name: targetPlanName, price: priceNum, radius: radiusNum, features: newPlanFeatures }
           : p
       );
       setPlans(updated);
+
+      // Instantly propagate radius change to all mechanics on this plan tier!
+      const updatedMechanics = mechanics.map((m) => {
+        if (
+          m.tier === targetPlanName ||
+          (targetPlanName === 'Basic' && m.tier === 'Basic') ||
+          (targetPlanName === 'Premium Pro' && m.tier === 'Premium Pro')
+        ) {
+          return { ...m, radius: radiusNum };
+        }
+        return m;
+      });
+      setMechanics(updatedMechanics);
+
       setEditingPlanId(null);
     } else {
       const planObj: SubscriptionPlan = {
         id: `plan-${Date.now()}`,
-        name: newPlanName.trim(),
-        price: Number(newPlanPrice),
-        radius: Number(newPlanRadius),
-        features: newPlanFeatures.length > 0 ? newPlanFeatures : [`${newPlanRadius}km Dispatch Radius`],
+        name: targetPlanName,
+        price: priceNum,
+        radius: radiusNum,
+        features: newPlanFeatures.length > 0 ? newPlanFeatures : [`${radiusNum}km Dispatch Radius`],
       };
       setPlans([...plans, planObj]);
+
+      const updatedMechanics = mechanics.map((m) => {
+        if (
+          m.tier === targetPlanName ||
+          (targetPlanName === 'Basic' && m.tier === 'Basic') ||
+          (targetPlanName === 'Premium Pro' && m.tier === 'Premium Pro')
+        ) {
+          return { ...m, radius: radiusNum };
+        }
+        return m;
+      });
+      setMechanics(updatedMechanics);
     }
 
     setNewPlanName('');
@@ -1478,7 +1546,7 @@ export default function SuperAdminDashboard() {
                   type="number"
                   required
                   value={flatRate}
-                  onChange={(e) => setFlatRate(Number(e.target.value))}
+                  onChange={(e) => setFlatRate(e.target.value === '' ? '' : e.target.value)}
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-accent-orange"
                 />
               </div>
@@ -1489,7 +1557,7 @@ export default function SuperAdminDashboard() {
                   type="number"
                   required
                   value={perKmRate}
-                  onChange={(e) => setPerKmRate(Number(e.target.value))}
+                  onChange={(e) => setPerKmRate(e.target.value === '' ? '' : e.target.value)}
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-accent-orange"
                 />
               </div>
@@ -1566,7 +1634,7 @@ export default function SuperAdminDashboard() {
                       type="number"
                       required
                       value={newPlanPrice}
-                      onChange={(e) => setNewPlanPrice(Number(e.target.value))}
+                      onChange={(e) => setNewPlanPrice(e.target.value === '' ? '' : e.target.value)}
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
                     />
                   </div>
@@ -1576,7 +1644,7 @@ export default function SuperAdminDashboard() {
                       type="number"
                       required
                       value={newPlanRadius}
-                      onChange={(e) => setNewPlanRadius(Number(e.target.value))}
+                      onChange={(e) => setNewPlanRadius(e.target.value === '' ? '' : e.target.value)}
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
                     />
                   </div>
@@ -1671,7 +1739,7 @@ export default function SuperAdminDashboard() {
 
                 <div className="pt-2">
                   <span className="text-[10px] text-slate-500 uppercase font-extrabold block mb-2">Registered Staff Roster ({selectedMechanicModal.employees?.length || 0})</span>
-                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                  <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
                     {selectedMechanicModal.employees?.map((emp) => (
                       <div key={emp.id} className="bg-slate-900 p-2 rounded-lg border border-slate-850 flex justify-between items-center text-[11px]">
                         <div>
@@ -1682,6 +1750,53 @@ export default function SuperAdminDashboard() {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* Admin Capacity & Radius Configuration Controls */}
+                <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 space-y-2 mt-2">
+                  <span className="text-[10px] text-amber-400 font-extrabold uppercase tracking-wider block">
+                    ⚡ Admin Garage Capacity & Operating Radius Controls
+                  </span>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <label className="text-[9px] text-slate-400 font-bold block mb-1">Max Capacity</label>
+                      <input
+                        type="number"
+                        value={editMaxCapacity}
+                        onChange={(e) => setEditMaxCapacity(e.target.value === '' ? '' : e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs font-mono focus:outline-none focus:border-amber-400"
+                        placeholder="e.g. 5"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-slate-400 font-bold block mb-1">Radius (km)</label>
+                      <input
+                        type="number"
+                        value={editRadius}
+                        onChange={(e) => setEditRadius(e.target.value === '' ? '' : e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-200 text-xs font-mono focus:outline-none focus:border-amber-400"
+                        placeholder="e.g. 25"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-slate-400 font-bold block mb-1">Tier</label>
+                      <select
+                        value={editTier}
+                        onChange={(e) => setEditTier(e.target.value as 'Basic' | 'Premium Pro')}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-1.5 py-1 text-slate-200 text-xs focus:outline-none focus:border-amber-400 cursor-pointer"
+                      >
+                        <option value="Basic">Basic</option>
+                        <option value="Premium Pro">Premium Pro</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveMechanicCapacityAndSettings(selectedMechanicModal.id)}
+                    className="w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black rounded-lg cursor-pointer transition-all shadow-md mt-1"
+                  >
+                    Save Capacity & Settings
+                  </button>
                 </div>
               </div>
 

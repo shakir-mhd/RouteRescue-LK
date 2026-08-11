@@ -104,7 +104,7 @@ export default function TriageDrawer({
       if (activeJobsCount >= maxCap) return;
 
       const d = getDistanceInKm(reportLocation[0], reportLocation[1], mech.lat, mech.lng);
-      const maxRadius = mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium' ? 25 : 5;
+      const maxRadius = Number(mech.radius) || (mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium' ? 25 : 5);
 
       if (d <= maxRadius) {
         const distKm = parseFloat(d.toFixed(1));

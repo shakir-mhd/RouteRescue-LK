@@ -25,6 +25,7 @@ interface Mechanic {
   lat: number;
   lng: number;
   tier: 'Basic' | 'Premium Pro' | 'basic' | 'premium';
+  radius?: number;
   isAvailable?: boolean;
   isOpen?: boolean;
   maxCapacity?: number;
@@ -353,11 +354,11 @@ export default function MapInner({
                   </div>
                   {(mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium') ? (
                     <span className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/40 font-black shrink-0">
-                      PRO (25km)
+                      PRO ({mech.radius || 25}km)
                     </span>
                   ) : (
                     <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/40 font-black shrink-0">
-                      BASIC (5km)
+                      BASIC ({mech.radius || 5}km)
                     </span>
                   )}
                 </div>
