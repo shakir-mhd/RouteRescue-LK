@@ -24,6 +24,11 @@ import {
   MapPin,
   FileText,
   Power,
+  Search,
+  Filter,
+  CheckCircle2,
+  XCircle,
+  Banknote,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs } from '@/utils/store';
@@ -98,6 +103,9 @@ export default function MechanicPortal() {
 
   // Tab & Form State
   const [activeTab, setActiveTab] = useState<'dispatch' | 'roster' | 'history' | 'settings'>('dispatch');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<'all' | 'resolved' | 'cancelled'>('all');
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [historyCategoryFilter, setHistoryCategoryFilter] = useState('all');
 
   // Login & Registration State
   const [loginPhone, setLoginPhone] = useState('');
@@ -761,6 +769,30 @@ export default function MechanicPortal() {
         .filter((i) => String(i.mechanicId) === String(currentMechanic.id) && (i.status === 'Resolved' || i.status === 'Cancelled'))
         .sort((a, b) => parseTimestampMs(b.timestamp) - parseTimestampMs(a.timestamp))
     : [];
+
+  const garageHistoryResolvedCount = completedJobsForGarage.filter((i) => i.status === 'Resolved').length;
+  const garageHistoryCancelledCount = completedJobsForGarage.filter((i) => i.status === 'Cancelled').length;
+  const garageHistoryTotalRevenue = completedJobsForGarage
+    .filter((i) => i.status === 'Resolved')
+    .reduce((acc, i) => acc + Number(i.baseTariff || 1000), 0);
+
+  const filteredGarageHistory = completedJobsForGarage.filter((inc) => {
+    if (historyStatusFilter === 'resolved' && inc.status !== 'Resolved') return false;
+    if (historyStatusFilter === 'cancelled' && inc.status !== 'Cancelled') return false;
+    if (historyCategoryFilter !== 'all' && inc.category !== historyCategoryFilter) return false;
+    if (historySearchQuery.trim()) {
+      const q = historySearchQuery.toLowerCase().trim();
+      const matchId = String(inc.id).toLowerCase().includes(q);
+      const matchCat = String(inc.category).toLowerCase().includes(q);
+      const matchDriver = String(inc.driverName || '').toLowerCase().includes(q);
+      const matchPhone = String(inc.driverPhone || '').toLowerCase().includes(q);
+      const matchStaff = String(inc.assignedEmployee?.name || '').toLowerCase().includes(q);
+      const matchReason = String(inc.cancellationReason || '').toLowerCase().includes(q);
+      const matchBy = String(inc.cancelledBy || '').toLowerCase().includes(q);
+      return matchId || matchCat || matchDriver || matchPhone || matchStaff || matchReason || matchBy;
+    }
+    return true;
+  });
 
   const handleUpdatePassword = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1578,28 +1610,160 @@ export default function MechanicPortal() {
             {/* TAB 3: Completed Service History */}
             {activeTab === 'history' && (
               <div className="space-y-6">
+                {/* Executive Key Metrics Cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="glass-panel p-4 rounded-2xl border-slate-800 flex flex-col justify-between">
+                    <div className="flex justify-between items-center text-slate-400">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider">Total Bookings</span>
+                      <FileText size={16} className="text-slate-400" />
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-100">{completedJobsForGarage.length}</span>
+                      <span className="text-[10px] text-slate-400">Recorded</span>
+                    </div>
+                  </div>
+
+                  <div className="glass-panel p-4 rounded-2xl border-emerald-500/20 bg-emerald-950/10 flex flex-col justify-between">
+                    <div className="flex justify-between items-center text-emerald-400">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider">Resolved Jobs</span>
+                      <CheckCircle2 size={16} className="text-emerald-400" />
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-emerald-400">{garageHistoryResolvedCount}</span>
+                      <span className="text-[10px] text-emerald-400/80">Completed</span>
+                    </div>
+                  </div>
+
+                  <div className="glass-panel p-4 rounded-2xl border-red-500/20 bg-red-950/10 flex flex-col justify-between">
+                    <div className="flex justify-between items-center text-red-400">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider">Cancelled / Rejected</span>
+                      <XCircle size={16} className="text-red-400" />
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-red-400">{garageHistoryCancelledCount}</span>
+                      <span className="text-[10px] text-red-400/80">Declined</span>
+                    </div>
+                  </div>
+
+                  <div className="glass-panel p-4 rounded-2xl border-amber-500/20 bg-amber-950/10 flex flex-col justify-between">
+                    <div className="flex justify-between items-center text-amber-400">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider">Service Billed</span>
+                      <Banknote size={16} className="text-amber-400" />
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-1.5">
+                      <span className="text-lg font-black text-amber-400">{garageHistoryTotalRevenue.toLocaleString()}</span>
+                      <span className="text-[10px] text-amber-400/80">LKR</span>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="glass-panel p-5 rounded-2xl border-slate-800 space-y-4">
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-800">
                     <div>
                       <h3 className="text-xs font-black text-slate-200 uppercase tracking-wider flex items-center gap-2">
                         <CheckCircle className="text-emerald-400" size={16} />
-                        <span>Completed Service Breakdown Log</span>
+                        <span>Completed Service Breakdown Audit Log</span>
                       </h3>
                       <p className="text-[11px] text-slate-400 mt-0.5">
-                        Full audit history of all emergency repairs and roadside dispatch jobs completed by {currentMechanic.businessName || currentMechanic.name}.
+                        Audit history of all emergency repairs and dispatch calls for {currentMechanic.businessName || currentMechanic.name}.
                       </p>
                     </div>
-                    <span className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full font-bold border border-emerald-500/30">
-                      {completedJobsForGarage.length} Completed
-                    </span>
+
+                    {/* Category Dropdown */}
+                    <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
+                      <Filter size={14} className="text-slate-400" />
+                      <select
+                        value={historyCategoryFilter}
+                        onChange={(e) => setHistoryCategoryFilter(e.target.value)}
+                        className="bg-transparent text-slate-200 font-bold text-xs focus:outline-none cursor-pointer"
+                      >
+                        <option value="all" className="bg-slate-900">All Categories</option>
+                        <option value="Flat Tire" className="bg-slate-900">Flat Tire</option>
+                        <option value="Electrical/Won't Start" className="bg-slate-900">Electrical / Won't Start</option>
+                        <option value="Smoke/Overheating" className="bg-slate-900">Smoke / Overheating</option>
+                        <option value="Completely Stalled" className="bg-slate-900">Completely Stalled</option>
+                        <option value="Accident Assistance" className="bg-slate-900">Accident Assistance</option>
+                        <option value="Fuel/Battery" className="bg-slate-900">Fuel / Battery</option>
+                      </select>
+                    </div>
                   </div>
 
-                  {completedJobsForGarage.length === 0 ? (
+                  {/* Interactive Status Segment Filters & Real-Time Search Bar */}
+                  <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
+                    {/* Status Filter Sub-Tabs */}
+                    <div className="flex items-center bg-slate-900/90 border border-slate-800 p-1 rounded-xl gap-1 shrink-0">
+                      <button
+                        onClick={() => setHistoryStatusFilter('all')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          historyStatusFilter === 'all'
+                            ? 'bg-slate-800 text-slate-100 shadow-md border border-slate-700'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <span>All Jobs</span>
+                        <span className="bg-slate-700 text-slate-300 px-1.5 py-0.2 rounded-full text-[10px]">
+                          {completedJobsForGarage.length}
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => setHistoryStatusFilter('resolved')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          historyStatusFilter === 'resolved'
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-md'
+                            : 'text-slate-400 hover:text-emerald-400'
+                        }`}
+                      >
+                        <CheckCircle2 size={13} className="text-emerald-400" />
+                        <span>Resolved</span>
+                        <span className="bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 rounded-full text-[10px]">
+                          {garageHistoryResolvedCount}
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => setHistoryStatusFilter('cancelled')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          historyStatusFilter === 'cancelled'
+                            ? 'bg-red-500/20 text-red-400 border border-red-500/40 shadow-md'
+                            : 'text-slate-400 hover:text-red-400'
+                        }`}
+                      >
+                        <XCircle size={13} className="text-red-400" />
+                        <span>Cancelled / Rejected</span>
+                        <span className="bg-red-500/20 text-red-400 px-1.5 py-0.2 rounded-full text-[10px]">
+                          {garageHistoryCancelledCount}
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* Instant Search Bar */}
+                    <div className="relative flex-grow max-w-md">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={historySearchQuery}
+                        onChange={(e) => setHistorySearchQuery(e.target.value)}
+                        placeholder="Search ref ID, driver, technician, category, or reason..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-8 py-1.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-accent-green"
+                      />
+                      {historySearchQuery && (
+                        <button
+                          onClick={() => setHistorySearchQuery('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-xs font-bold"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {filteredGarageHistory.length === 0 ? (
                     <div className="text-center py-10 text-xs text-slate-500 flex flex-col items-center gap-2">
                       <div className="h-10 w-10 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600">
-                        📑
+                        🔍
                       </div>
-                      <span>No completed rescue jobs logged yet. Resolved emergency dispatches will appear here.</span>
+                      <span>No service records match your selected status or filter keywords.</span>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -1615,7 +1779,7 @@ export default function MechanicPortal() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-850 text-slate-300">
-                          {completedJobsForGarage.map((inc) => (
+                          {filteredGarageHistory.map((inc) => (
                             <tr key={inc.id} className="hover:bg-slate-900/50 transition-colors">
                               <td className="py-3 font-extrabold text-amber-400">{inc.category}</td>
                               <td className="py-3">

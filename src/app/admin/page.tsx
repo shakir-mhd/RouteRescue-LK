@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, ShieldAlert, Key, UserCheck, CreditCard, Map, Info, Star,
   Building2, Users, Settings, Eye, RefreshCw, X, AlertTriangle, FileText,
-  Calendar, Trash2, CheckCircle, Phone, Clock, ShieldCheck, MapPin, ExternalLink, LogOut
+  Calendar, Trash2, CheckCircle, Phone, Clock, ShieldCheck, MapPin, ExternalLink, LogOut,
+  Search, Filter, CheckCircle2, XCircle, Banknote
 } from 'lucide-react';
 import { useSharedState, Incident, Mechanic, SEED_MECHANICS, DEFAULT_ADMIN_SETTINGS, AdminSettings, SubscriptionPlan, DEFAULT_PLANS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs } from '../../utils/store';
 import { supabase } from '../../utils/supabase';
@@ -33,8 +34,11 @@ export default function SuperAdminDashboard() {
   // Active Tab View State: 'live-incidents' | 'completed-history' | 'queue' | 'directory' | 'billing' | 'map' | 'settings'
   const [activeTab, setActiveTab] = useState<'live-incidents' | 'completed-history' | 'queue' | 'directory' | 'billing' | 'map' | 'settings'>('live-incidents');
 
-  // Month filter for completed booking history
+  // Month & History Filters for completed booking history
   const [selectedMonth, setSelectedMonth] = useState<string>('All');
+  const [adminHistoryStatusFilter, setAdminHistoryStatusFilter] = useState<'all' | 'resolved' | 'cancelled'>('all');
+  const [adminHistorySearchQuery, setAdminHistorySearchQuery] = useState('');
+  const [adminHistoryCategoryFilter, setAdminHistoryCategoryFilter] = useState('all');
 
   // Directory status filter: 'approved' | 'rejected'
   const [directoryFilter, setDirectoryFilter] = useState<'approved' | 'rejected'>('approved');
@@ -528,6 +532,31 @@ export default function SuperAdminDashboard() {
     })
     .sort((a, b) => parseTimestampMs(b.timestamp) - parseTimestampMs(a.timestamp));
 
+  const adminHistoryResolvedCount = completedIncidentsList.filter((i) => i.status === 'Resolved').length;
+  const adminHistoryCancelledCount = completedIncidentsList.filter((i) => i.status === 'Cancelled').length;
+  const adminHistoryTotalRevenue = completedIncidentsList
+    .filter((i) => i.status === 'Resolved')
+    .reduce((acc, i) => acc + Number(i.baseTariff || 1000), 0);
+
+  const filteredAdminHistory = completedIncidentsList.filter((inc) => {
+    if (adminHistoryStatusFilter === 'resolved' && inc.status !== 'Resolved') return false;
+    if (adminHistoryStatusFilter === 'cancelled' && inc.status !== 'Cancelled') return false;
+    if (adminHistoryCategoryFilter !== 'all' && inc.category !== adminHistoryCategoryFilter) return false;
+    if (adminHistorySearchQuery.trim()) {
+      const q = adminHistorySearchQuery.toLowerCase().trim();
+      const garage = mechanics.find((m) => String(m.id) === String(inc.mechanicId));
+      const matchId = String(inc.id).toLowerCase().includes(q);
+      const matchCat = String(inc.category).toLowerCase().includes(q);
+      const matchDriver = String(inc.driverName || '').toLowerCase().includes(q);
+      const matchPhone = String(inc.driverPhone || '').toLowerCase().includes(q);
+      const matchGarage = String(garage?.businessName || garage?.name || '').toLowerCase().includes(q);
+      const matchReason = String(inc.cancellationReason || '').toLowerCase().includes(q);
+      const matchBy = String(inc.cancelledBy || '').toLowerCase().includes(q);
+      return matchId || matchCat || matchDriver || matchPhone || matchGarage || matchReason || matchBy;
+    }
+    return true;
+  });
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-6 relative overflow-hidden select-none">
@@ -795,39 +824,177 @@ export default function SuperAdminDashboard() {
 
         {/* TAB: MONTHLY COMPLETED BOOKINGS HISTORY EVIDENCE LOGS */}
         {activeTab === 'completed-history' && (
-          <div className="space-y-4">
-            <div className="glass-panel p-5 rounded-2xl border-slate-800 space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-800">
-                <div>
-                  <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-                    <FileText className="text-emerald-400" size={16} />
-                    <span>Monthly Completed Bookings Evidence Records</span>
-                  </h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Full audit log of resolved and cancelled emergency breakdown rescue operations.
-                  </p>
+          <div className="space-y-6">
+            {/* Executive Key Metrics Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="glass-panel p-4 rounded-2xl border-slate-800 flex flex-col justify-between">
+                <div className="flex justify-between items-center text-slate-400">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider">Total Operations</span>
+                  <FileText size={16} className="text-slate-400" />
                 </div>
-
-                {/* Month Filter Selector */}
-                <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
-                  <Calendar size={14} className="text-amber-400" />
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="bg-transparent text-slate-200 font-bold text-xs focus:outline-none cursor-pointer"
-                  >
-                    <option value="All" className="bg-slate-900">All Months (Evidence Log)</option>
-                    <option value="July 2026" className="bg-slate-900">July 2026</option>
-                    <option value="June 2026" className="bg-slate-900">June 2026</option>
-                    <option value="May 2026" className="bg-slate-900">May 2026</option>
-                  </select>
+                <div className="mt-2 flex items-baseline gap-1.5">
+                  <span className="text-xl font-black text-slate-100">{completedIncidentsList.length}</span>
+                  <span className="text-[10px] text-slate-400">Audit Logs</span>
                 </div>
               </div>
 
-              {completedIncidentsList.length === 0 ? (
+              <div className="glass-panel p-4 rounded-2xl border-emerald-500/20 bg-emerald-950/10 flex flex-col justify-between">
+                <div className="flex justify-between items-center text-emerald-400">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider">Successfully Resolved</span>
+                  <CheckCircle2 size={16} className="text-emerald-400" />
+                </div>
+                <div className="mt-2 flex items-baseline gap-1.5">
+                  <span className="text-xl font-black text-emerald-400">{adminHistoryResolvedCount}</span>
+                  <span className="text-[10px] text-emerald-400/80">Completed</span>
+                </div>
+              </div>
+
+              <div className="glass-panel p-4 rounded-2xl border-red-500/20 bg-red-950/10 flex flex-col justify-between">
+                <div className="flex justify-between items-center text-red-400">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider">Cancelled / Rejected</span>
+                  <XCircle size={16} className="text-red-400" />
+                </div>
+                <div className="mt-2 flex items-baseline gap-1.5">
+                  <span className="text-xl font-black text-red-400">{adminHistoryCancelledCount}</span>
+                  <span className="text-[10px] text-red-400/80">Terminated</span>
+                </div>
+              </div>
+
+              <div className="glass-panel p-4 rounded-2xl border-amber-500/20 bg-amber-950/10 flex flex-col justify-between">
+                <div className="flex justify-between items-center text-amber-400">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider">Total Revenue Billed</span>
+                  <Banknote size={16} className="text-amber-400" />
+                </div>
+                <div className="mt-2 flex items-baseline gap-1.5">
+                  <span className="text-lg font-black text-amber-400">{adminHistoryTotalRevenue.toLocaleString()}</span>
+                  <span className="text-[10px] text-amber-400/80">LKR</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-panel p-5 rounded-2xl border-slate-800 space-y-4">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 pb-3 border-b border-slate-800">
+                <div>
+                  <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                    <FileText className="text-emerald-400" size={16} />
+                    <span>Monthly Completed Bookings Audit Evidence Records</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Full audit log of resolved and cancelled emergency breakdown rescue operations across Sri Lanka.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Category Dropdown Filter */}
+                  <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
+                    <Filter size={14} className="text-slate-400" />
+                    <select
+                      value={adminHistoryCategoryFilter}
+                      onChange={(e) => setAdminHistoryCategoryFilter(e.target.value)}
+                      className="bg-transparent text-slate-200 font-bold text-xs focus:outline-none cursor-pointer"
+                    >
+                      <option value="all" className="bg-slate-900">All Categories</option>
+                      <option value="Flat Tire" className="bg-slate-900">Flat Tire</option>
+                      <option value="Electrical/Won't Start" className="bg-slate-900">Electrical / Won't Start</option>
+                      <option value="Smoke/Overheating" className="bg-slate-900">Smoke / Overheating</option>
+                      <option value="Completely Stalled" className="bg-slate-900">Completely Stalled</option>
+                      <option value="Accident Assistance" className="bg-slate-900">Accident Assistance</option>
+                      <option value="Fuel/Battery" className="bg-slate-900">Fuel / Battery</option>
+                    </select>
+                  </div>
+
+                  {/* Month Filter Selector */}
+                  <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
+                    <Calendar size={14} className="text-amber-400" />
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="bg-transparent text-slate-200 font-bold text-xs focus:outline-none cursor-pointer"
+                    >
+                      <option value="All" className="bg-slate-900">All Months (Evidence Log)</option>
+                      <option value="August 2026" className="bg-slate-900">August 2026</option>
+                      <option value="July 2026" className="bg-slate-900">July 2026</option>
+                      <option value="June 2026" className="bg-slate-900">June 2026</option>
+                      <option value="May 2026" className="bg-slate-900">May 2026</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Interactive Status Segment Filters & Real-Time Search Bar */}
+              <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
+                {/* Status Sub-Tabs */}
+                <div className="flex items-center bg-slate-900/90 border border-slate-800 p-1 rounded-xl gap-1 shrink-0">
+                  <button
+                    onClick={() => setAdminHistoryStatusFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      adminHistoryStatusFilter === 'all'
+                        ? 'bg-slate-800 text-slate-100 shadow-md border border-slate-700'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <span>All Logged</span>
+                    <span className="bg-slate-700 text-slate-300 px-1.5 py-0.2 rounded-full text-[10px]">
+                      {completedIncidentsList.length}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setAdminHistoryStatusFilter('resolved')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      adminHistoryStatusFilter === 'resolved'
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-md'
+                        : 'text-slate-400 hover:text-emerald-400'
+                    }`}
+                  >
+                    <CheckCircle2 size={13} className="text-emerald-400" />
+                    <span>Resolved</span>
+                    <span className="bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 rounded-full text-[10px]">
+                      {adminHistoryResolvedCount}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setAdminHistoryStatusFilter('cancelled')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      adminHistoryStatusFilter === 'cancelled'
+                        ? 'bg-red-500/20 text-red-400 border border-red-500/40 shadow-md'
+                        : 'text-slate-400 hover:text-red-400'
+                    }`}
+                  >
+                    <XCircle size={13} className="text-red-400" />
+                    <span>Cancelled / Rejected</span>
+                    <span className="bg-red-500/20 text-red-400 px-1.5 py-0.2 rounded-full text-[10px]">
+                      {adminHistoryCancelledCount}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Instant Search Input Bar */}
+                <div className="relative flex-grow max-w-md">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={adminHistorySearchQuery}
+                    onChange={(e) => setAdminHistorySearchQuery(e.target.value)}
+                    placeholder="Search incident ID, driver, garage, category, or reason..."
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-8 py-1.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-accent-orange"
+                  />
+                  {adminHistorySearchQuery && (
+                    <button
+                      onClick={() => setAdminHistorySearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-xs font-bold"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {filteredAdminHistory.length === 0 ? (
                 <div className="text-center py-12 text-slate-500 space-y-2">
                   <FileText size={32} className="mx-auto text-slate-600" />
-                  <p className="text-xs font-semibold">No completed or cancelled booking records in history yet.</p>
+                  <p className="text-xs font-semibold">No booking records match your selected status or filter keywords.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -844,7 +1011,7 @@ export default function SuperAdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-850/60">
-                      {completedIncidentsList.map((inc) => {
+                      {filteredAdminHistory.map((inc) => {
                         const garage = mechanics.find((m) => String(m.id) === String(inc.mechanicId));
                         return (
                           <tr key={inc.id} className="hover:bg-slate-900/50 transition-colors">
