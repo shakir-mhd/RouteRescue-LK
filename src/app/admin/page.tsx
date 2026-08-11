@@ -54,7 +54,7 @@ export default function SuperAdminDashboard() {
 
     async function syncIncidentsFromSupabase() {
       try {
-        const { data, error } = await supabase.from('incidents').select('*');
+        const { data, error } = await supabase.from('incidents').select('*').order('timestamp', { ascending: false });
         if (!error && data && isMounted) {
           const cancelledIds = getCancelledIncidentIds();
           const formattedIncidents: Incident[] = data
@@ -90,6 +90,7 @@ export default function SuperAdminDashboard() {
                 }
               }
             }
+            merged.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
             return merged;
           });
         }
@@ -518,12 +519,14 @@ export default function SuperAdminDashboard() {
   const rejectedGarages = mechanics.filter((m) => m.status === 'Rejected');
 
   const activeIncidentsList = incidents.filter((i) => i.status !== 'Resolved' && i.status !== 'Cancelled');
-  const completedIncidentsList = incidents.filter((i) => {
-    if (i.status !== 'Resolved' && i.status !== 'Cancelled') return false;
-    if (selectedMonth === 'All') return true;
-    const dateStr = new Date(i.timestamp).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    return dateStr.toLowerCase().includes(selectedMonth.toLowerCase());
-  });
+  const completedIncidentsList = incidents
+    .filter((i) => {
+      if (i.status !== 'Resolved' && i.status !== 'Cancelled') return false;
+      if (selectedMonth === 'All') return true;
+      const dateStr = new Date(i.timestamp).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      return dateStr.toLowerCase().includes(selectedMonth.toLowerCase());
+    })
+    .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
 
   if (!isAdmin) {
     return (

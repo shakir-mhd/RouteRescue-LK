@@ -242,7 +242,7 @@ export default function MechanicPortal() {
 
     async function syncIncidentsFromSupabase() {
       try {
-        const { data, error } = await supabase.from('incidents').select('*');
+        const { data, error } = await supabase.from('incidents').select('*').order('timestamp', { ascending: false });
         if (!error && data && isMounted) {
           const cancelledIds = getCancelledIncidentIds();
           const formattedIncidents: Incident[] = data
@@ -278,6 +278,7 @@ export default function MechanicPortal() {
                 }
               }
             }
+            merged.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
             return merged;
           });
         }
@@ -756,7 +757,9 @@ export default function MechanicPortal() {
   };
 
   const completedJobsForGarage = currentMechanic
-    ? incidents.filter((i) => String(i.mechanicId) === String(currentMechanic.id) && i.status === 'Resolved')
+    ? incidents
+        .filter((i) => String(i.mechanicId) === String(currentMechanic.id) && (i.status === 'Resolved' || i.status === 'Cancelled'))
+        .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
     : [];
 
   const handleUpdatePassword = (e: React.FormEvent) => {

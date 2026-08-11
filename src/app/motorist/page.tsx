@@ -129,7 +129,7 @@ export default function MotoristPortal() {
 
     async function syncIncidentsFromSupabase() {
       try {
-        const { data, error } = await supabase.from('incidents').select('*');
+        const { data, error } = await supabase.from('incidents').select('*').order('timestamp', { ascending: false });
         if (!error && data && isMounted) {
           const cancelledIds = getCancelledIncidentIds();
           const formattedIncidents: Incident[] = data
@@ -165,6 +165,7 @@ export default function MotoristPortal() {
                 }
               }
             }
+            merged.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
             return merged;
           });
         }

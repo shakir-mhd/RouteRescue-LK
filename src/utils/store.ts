@@ -394,7 +394,7 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
               window.localStorage.setItem(key, JSON.stringify(mapped));
             }
           } else if (key === 'routerescue_incidents') {
-            const { data } = await supabase.from('incidents').select('*');
+            const { data } = await supabase.from('incidents').select('*').order('timestamp', { ascending: false });
             if (data) {
               const mapped = data.map((inc: any) => ({
                 id: String(inc.id),
@@ -412,6 +412,7 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
                 cancellationReason: inc.cancellation_reason || inc.cancellationReason || undefined,
                 cancelledBy: inc.cancelled_by || inc.cancelledBy || undefined,
               }));
+              mapped.sort((a: any, b: any) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
               setState(mapped as unknown as T);
               window.localStorage.setItem(key, JSON.stringify(mapped));
             }
