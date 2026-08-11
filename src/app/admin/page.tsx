@@ -69,6 +69,8 @@ export default function SuperAdminDashboard() {
             driverName: d.driver_name ? String(d.driver_name) : undefined,
             driverPhone: d.driver_phone ? String(d.driver_phone) : undefined,
             assignedEmployee: d.assigned_employee || undefined,
+            cancellationReason: d.cancellation_reason ? String(d.cancellation_reason) : undefined,
+            cancelledBy: d.cancelled_by ? (String(d.cancelled_by) as any) : undefined,
           }));
 
           setIncidents(formattedIncidents);
@@ -151,17 +153,21 @@ export default function SuperAdminDashboard() {
   };
 
   // Emergency Cancel Breakdown Booking Action
-  const handleAdminCancelIncident = (incidentId: string) => {
+  const handleAdminCancelIncident = async (incidentId: string) => {
     const reason = prompt('Enter admin emergency cancellation reason:');
-    if (!reason) return;
+    if (!reason || !reason.trim()) return;
 
-    const updatedIncidents = incidents.map((inc) => {
-      if (inc.id === incidentId) {
-        return { ...inc, status: 'Cancelled' as const };
-      }
-      return inc;
-    });
+    const targetInc = incidents.find((inc) => inc.id === incidentId);
+    if (!targetInc) return;
 
+    const cancelledIncident: Incident = {
+      ...targetInc,
+      status: 'Cancelled' as const,
+      cancellationReason: reason.trim(),
+      cancelledBy: 'admin',
+    };
+
+    const updatedIncidents = incidents.map((inc) => (inc.id === incidentId ? cancelledIncident : inc));
     setIncidents(updatedIncidents);
 
     if (typeof window !== 'undefined') {
@@ -170,13 +176,44 @@ export default function SuperAdminDashboard() {
         try {
           const activeInc = JSON.parse(activeIncStr);
           if (activeInc && activeInc.id === incidentId) {
-            localStorage.setItem('routerescue_active_incident', JSON.stringify({ ...activeInc, status: 'Cancelled' }));
+            localStorage.setItem('routerescue_active_incident', JSON.stringify(cancelledIncident));
             window.dispatchEvent(new Event('local-storage-sync'));
           }
         } catch (e) {
           console.error(e);
         }
       }
+    }
+
+    try {
+      const payload = {
+        id: String(cancelledIncident.id),
+        category: cancelledIncident.category,
+        lat: Number(cancelledIncident.lat),
+        lng: Number(cancelledIncident.lng),
+        status: 'Cancelled',
+        base_tariff: Number(cancelledIncident.baseTariff || 1000),
+        timestamp: cancelledIncident.timestamp || new Date().toISOString(),
+        mechanic_id: String(cancelledIncident.mechanicId || ''),
+        distance_km: Number(cancelledIncident.distanceKm || 0),
+        driver_name: cancelledIncident.driverName || 'Anonymous Motorist',
+        driver_phone: cancelledIncident.driverPhone || '',
+        assigned_employee: cancelledIncident.assignedEmployee || null,
+        cancellation_reason: reason.trim(),
+        cancelled_by: 'admin',
+      };
+
+      const { error } = await supabase.from('incidents').upsert([payload]);
+      if (error) console.error('Supabase admin incident cancel error:', error);
+
+      if (targetInc.mechanicId) {
+        await supabase
+          .from('mechanics')
+          .update({ is_available: true })
+          .eq('id', String(targetInc.mechanicId));
+      }
+    } catch (err) {
+      console.error('Error writing admin incident cancellation to Supabase:', err);
     }
 
     alert('Emergency breakdown incident cancelled by Super Admin.');
@@ -777,8 +814,13 @@ export default function SuperAdminDashboard() {
                             <td className="py-3 px-3">
                               <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border ${inc.status === 'Resolved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'
                                 }`}>
-                                {inc.status === 'Resolved' ? 'Resolved / Completed' : 'Admin Cancelled'}
+                                {inc.status === 'Resolved' ? 'Resolved / Completed' : `Cancelled (${inc.cancelledBy || 'System'})`}
                               </span>
+                              {inc.status === 'Cancelled' && inc.cancellationReason && (
+                                <p className="text-[10px] text-red-300 mt-1 italic leading-tight">
+                                  Reason: {inc.cancellationReason}
+                                </p>
+                              )}
                             </td>
                             <td className="py-3 px-3 text-right font-bold text-amber-400">{inc.baseTariff?.toLocaleString()} LKR</td>
                           </tr>

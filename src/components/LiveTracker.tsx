@@ -19,6 +19,8 @@ interface Incident {
     phone: string;
     role: string;
   };
+  cancellationReason?: string;
+  cancelledBy?: 'driver' | 'mechanic' | 'admin';
 }
 
 interface LiveTrackerProps {
@@ -27,6 +29,7 @@ interface LiveTrackerProps {
   onCancelIncident: () => void;
   onResolveIncident: () => void;
   onConfirmArrival?: () => void;
+  onDismissCancelled?: () => void;
 }
 
 const STEPS = [
@@ -43,6 +46,7 @@ export default function LiveTracker({
   onCancelIncident,
   onResolveIncident,
   onConfirmArrival,
+  onDismissCancelled,
 }: LiveTrackerProps) {
   const [eta, setEta] = useState<number>(12);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -82,6 +86,43 @@ export default function LiveTracker({
           <p className="text-xs text-slate-500 leading-relaxed">
             Your vehicle is currently marked safe. In the event of a breakdown, navigate to the map dashboard to request emergency assistance.
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (activeIncident.status === 'Cancelled') {
+    const cancelledByText =
+      activeIncident.cancelledBy === 'mechanic'
+        ? 'Garage Owner / Service Provider'
+        : activeIncident.cancelledBy === 'admin'
+        ? 'System Administrator'
+        : 'Driver';
+
+    return (
+      <div className="flex-grow flex flex-col items-center justify-center p-6 text-center bg-slate-950/80 min-h-[70vh]">
+        <div className="glass-panel p-6 rounded-2xl max-w-sm w-full border-red-500/40 bg-red-950/20 flex flex-col items-center gap-4 shadow-xl">
+          <div className="h-14 w-14 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center text-2xl text-red-400 animate-pulse">
+            ⚠️
+          </div>
+          <div>
+            <span className="text-[10px] bg-red-500/20 text-red-400 px-2.5 py-0.5 rounded-full border border-red-500/30 font-bold uppercase tracking-wider">
+              Booking Request Cancelled
+            </span>
+            <h3 className="text-sm font-extrabold text-slate-100 mt-2">
+              Request Cancelled by {cancelledByText}
+            </h3>
+            <div className="text-xs text-slate-400 mt-2 bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-left">
+              <strong className="text-amber-400 block mb-1">Reason for Cancellation:</strong>
+              <span className="text-slate-200">{activeIncident.cancellationReason || 'No cancellation reason specified.'}</span>
+            </div>
+          </div>
+          <button
+            onClick={onDismissCancelled || onCancelIncident}
+            className="w-full py-3 px-4 rounded-xl bg-accent-orange hover:bg-orange-600 text-slate-950 font-bold text-xs border border-orange-400 shadow-md cursor-pointer transition-all active:scale-[0.98] mt-1"
+          >
+            Dismiss & Request New Rescue
+          </button>
         </div>
       </div>
     );

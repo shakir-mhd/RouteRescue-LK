@@ -84,6 +84,8 @@ interface Incident {
   driverName?: string;
   driverPhone?: string;
   assignedEmployee?: Employee;
+  cancellationReason?: string;
+  cancelledBy?: 'driver' | 'mechanic' | 'admin';
 }
 
 export default function MechanicPortal() {
@@ -254,6 +256,8 @@ export default function MechanicPortal() {
             driverName: d.driver_name ? String(d.driver_name) : undefined,
             driverPhone: d.driver_phone ? String(d.driver_phone) : undefined,
             assignedEmployee: d.assigned_employee || undefined,
+            cancellationReason: d.cancellation_reason ? String(d.cancellation_reason) : undefined,
+            cancelledBy: d.cancelled_by ? (String(d.cancelled_by) as any) : undefined,
           }));
 
           setIncidents(formattedIncidents);
@@ -590,6 +594,74 @@ export default function MechanicPortal() {
 
     setQuickDispatchIncidentId(null);
     setSelectedDispatchPhone('');
+  };
+
+  const handleCancelIncidentByMechanic = async (incidentId: string) => {
+    if (!currentMechanic) return;
+    const reason = prompt('Please enter a cancellation reason for declining/cancelling this rescue request:');
+    if (!reason || !reason.trim()) return;
+
+    const targetInc = incidents.find((i) => i.id === incidentId);
+    if (!targetInc) return;
+
+    const cancelledIncident: Incident = {
+      ...targetInc,
+      status: 'Cancelled',
+      cancellationReason: reason.trim(),
+      cancelledBy: 'mechanic',
+    };
+
+    const updatedIncidents = incidents.map((i) => (i.id === incidentId ? cancelledIncident : i));
+    const updatedActiveJobs = Math.max(0, (currentMechanic.activeJobs || 1) - 1);
+    const updatedMech = { ...currentMechanic, activeJobs: updatedActiveJobs, isAvailable: true };
+
+    setIncidents(updatedIncidents);
+    setCurrentMechanic(updatedMech);
+    setMechanics(mechanics.map((m) => (String(m.id) === String(currentMechanic.id) ? updatedMech : m)));
+
+    if (typeof window !== 'undefined') {
+      const activeIncStr = localStorage.getItem('routerescue_active_incident');
+      if (activeIncStr) {
+        try {
+          const activeInc = JSON.parse(activeIncStr);
+          if (activeInc && activeInc.id === incidentId) {
+            localStorage.setItem('routerescue_active_incident', JSON.stringify(cancelledIncident));
+            window.dispatchEvent(new Event('local-storage-sync'));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+
+    try {
+      const payload = {
+        id: String(cancelledIncident.id),
+        category: cancelledIncident.category,
+        lat: Number(cancelledIncident.lat),
+        lng: Number(cancelledIncident.lng),
+        status: 'Cancelled',
+        base_tariff: Number(cancelledIncident.baseTariff || 1000),
+        timestamp: cancelledIncident.timestamp || new Date().toISOString(),
+        mechanic_id: String(cancelledIncident.mechanicId || ''),
+        distance_km: Number(cancelledIncident.distanceKm || 0),
+        driver_name: cancelledIncident.driverName || 'Anonymous Motorist',
+        driver_phone: cancelledIncident.driverPhone || '',
+        assigned_employee: cancelledIncident.assignedEmployee || null,
+        cancellation_reason: reason.trim(),
+        cancelled_by: 'mechanic',
+      };
+
+      const { error: incErr } = await supabase.from('incidents').upsert([payload]);
+      if (incErr) console.error('Supabase mechanic incident cancel error:', incErr);
+
+      await supabase
+        .from('mechanics')
+        .update({ active_jobs: updatedActiveJobs, is_available: true })
+        .eq('id', String(currentMechanic.id));
+    } catch (err) {
+      console.error('Error writing mechanic cancellation to Supabase:', err);
+    }
   };
 
   const handleResolveIncidentByMechanic = async (inc: Incident) => {
@@ -1303,6 +1375,13 @@ export default function MechanicPortal() {
                             >
                               Dispatch Technician
                             </button>
+
+                            <button
+                              onClick={() => handleCancelIncidentByMechanic(inc.id)}
+                              className="py-2 px-3 rounded-xl border border-red-500/30 bg-red-950/20 hover:bg-red-900/40 text-red-400 font-bold text-xs cursor-pointer whitespace-nowrap"
+                            >
+                              Decline Request
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -1325,7 +1404,7 @@ export default function MechanicPortal() {
                       {incidents
                         .filter((i) => String(i.mechanicId) === String(currentMechanic.id) && i.status !== 'Request Sent' && i.status !== 'Resolved' && i.status !== 'Cancelled')
                         .map((inc) => (
-                          <div key={inc.id} className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex justify-between items-center">
+                          <div key={inc.id} className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex justify-between items-center gap-2">
                             <div>
                               <span className="text-xs font-bold text-accent-yellow">{inc.category}</span>
                               <div className="text-xs text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
@@ -1339,12 +1418,20 @@ export default function MechanicPortal() {
                               </div>
                             </div>
 
-                            <button
-                              onClick={() => handleResolveIncidentByMechanic(inc)}
-                              className="py-1.5 px-3 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold cursor-pointer hover:bg-emerald-500/30 transition-all"
-                            >
-                              Resolve & Free Staff
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleResolveIncidentByMechanic(inc)}
+                                className="py-1.5 px-3 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold cursor-pointer hover:bg-emerald-500/30 transition-all"
+                              >
+                                Resolve & Free Staff
+                              </button>
+                              <button
+                                onClick={() => handleCancelIncidentByMechanic(inc.id)}
+                                className="py-1.5 px-3 rounded-lg border border-red-500/30 bg-red-950/20 hover:bg-red-900/40 text-red-400 text-xs font-bold cursor-pointer transition-all"
+                              >
+                                Cancel Dispatch
+                              </button>
+                            </div>
                           </div>
                         ))}
                     </div>

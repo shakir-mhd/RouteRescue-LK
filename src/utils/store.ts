@@ -74,6 +74,8 @@ export interface Incident {
     phone: string;
     role: string;
   };
+  cancellationReason?: string;
+  cancelledBy?: 'driver' | 'mechanic' | 'admin';
 }
 
 export interface AdminSettings {
@@ -228,6 +230,8 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             driver_name: inc.driverName || inc.driver_name || 'Anonymous Motorist',
             driver_phone: inc.driverPhone || inc.driver_phone || '',
             assigned_employee: inc.assignedEmployee || inc.assigned_employee || null,
+            cancellation_reason: inc.cancellationReason || inc.cancellation_reason || null,
+            cancelled_by: inc.cancelledBy || inc.cancelled_by || null,
           }));
           supabase.from('incidents').upsert(payload).then(({ error }) => {
             if (error) console.error('Supabase incidents upsert error:', error);
@@ -360,6 +364,8 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
                 driverName: inc.driver_name || inc.driverName,
                 driverPhone: inc.driver_phone || inc.driverPhone,
                 assignedEmployee: inc.assigned_employee || inc.assignedEmployee,
+                cancellationReason: inc.cancellation_reason || inc.cancellationReason || undefined,
+                cancelledBy: inc.cancelled_by || inc.cancelledBy || undefined,
               }));
               setState(mapped as unknown as T);
               window.localStorage.setItem(key, JSON.stringify(mapped));

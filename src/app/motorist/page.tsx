@@ -144,6 +144,8 @@ export default function MotoristPortal() {
             driverName: d.driver_name ? String(d.driver_name) : undefined,
             driverPhone: d.driver_phone ? String(d.driver_phone) : undefined,
             assignedEmployee: d.assigned_employee || undefined,
+            cancellationReason: d.cancellation_reason ? String(d.cancellation_reason) : undefined,
+            cancelledBy: d.cancelled_by ? (String(d.cancelled_by) as any) : undefined,
           }));
 
           setIncidents(formattedIncidents);
@@ -168,7 +170,8 @@ export default function MotoristPortal() {
       if (matched) {
         if (
           matched.status !== activeIncident.status ||
-          matched.assignedEmployee?.name !== activeIncident.assignedEmployee?.name
+          matched.assignedEmployee?.name !== activeIncident.assignedEmployee?.name ||
+          matched.cancellationReason !== activeIncident.cancellationReason
         ) {
           setActiveIncident(matched);
           if (typeof window !== 'undefined') {
@@ -478,16 +481,73 @@ export default function MotoristPortal() {
     setActiveView('tracker');
   };
 
-  const handleCancelIncident = () => {
+  const handleCancelIncident = async () => {
     if (!activeIncident) return;
-    const closedIncidents = incidents.filter((i) => i.id !== activeIncident.id);
-    setIncidents(closedIncidents);
+    const reason = prompt('Please enter a reason for cancelling this rescue request:');
+    if (!reason || !reason.trim()) return;
+
+    const cancelledIncident: Incident = {
+      ...activeIncident,
+      status: 'Cancelled',
+      cancellationReason: reason.trim(),
+      cancelledBy: 'driver',
+    };
+
+    const updatedIncidents = incidents.map((i) => (i.id === activeIncident.id ? cancelledIncident : i));
+    setIncidents(updatedIncidents);
     setActiveIncident(null);
     setReportMode(false);
     setActiveView('map');
+
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('routerescue_active_incident');
+      window.dispatchEvent(new Event('local-storage-sync'));
+    }
+
     setMechanics((prev) =>
       prev.map((m) => (String(m.id) === String(activeIncident.mechanicId) ? { ...m, isAvailable: true } : m))
     );
+
+    try {
+      const payload = {
+        id: String(cancelledIncident.id),
+        category: cancelledIncident.category,
+        lat: Number(cancelledIncident.lat),
+        lng: Number(cancelledIncident.lng),
+        status: 'Cancelled',
+        base_tariff: Number(cancelledIncident.baseTariff || 1000),
+        timestamp: cancelledIncident.timestamp || new Date().toISOString(),
+        mechanic_id: String(cancelledIncident.mechanicId || ''),
+        distance_km: Number(cancelledIncident.distanceKm || 0),
+        driver_name: cancelledIncident.driverName || 'Anonymous Motorist',
+        driver_phone: cancelledIncident.driverPhone || '',
+        assigned_employee: cancelledIncident.assignedEmployee || null,
+        cancellation_reason: reason.trim(),
+        cancelled_by: 'driver',
+      };
+
+      const { error } = await supabase.from('incidents').upsert([payload]);
+      if (error) console.error('Supabase incident driver cancel error:', error);
+
+      if (activeIncident.mechanicId) {
+        await supabase
+          .from('mechanics')
+          .update({ is_available: true })
+          .eq('id', String(activeIncident.mechanicId));
+      }
+    } catch (err) {
+      console.error('Error writing driver cancelled incident to Supabase:', err);
+    }
+  };
+
+  const handleDismissCancelledIncident = () => {
+    setActiveIncident(null);
+    setReportMode(false);
+    setActiveView('map');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('routerescue_active_incident');
+      window.dispatchEvent(new Event('local-storage-sync'));
+    }
   };
 
   const handleResolveIncident = async () => {
@@ -950,6 +1010,7 @@ export default function MotoristPortal() {
                   onCancelIncident={handleCancelIncident}
                   onResolveIncident={handleResolveIncident}
                   onConfirmArrival={handleConfirmArrivalOnSite}
+                  onDismissCancelled={handleDismissCancelledIncident}
                 />
               </div>
             )}

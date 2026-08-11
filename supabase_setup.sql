@@ -35,6 +35,8 @@ create table public.incidents (
   base_tariff numeric not null,
   location geography(Point, 4326) not null, -- Incident coordinates
   assigned_mechanic_id uuid references public.mechanics(id) on delete set null,
+  cancellation_reason text,
+  cancelled_by text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
