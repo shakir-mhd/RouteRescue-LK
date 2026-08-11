@@ -34,7 +34,7 @@ export interface Mechanic {
   city: string;
   lat: number;
   lng: number;
-  tier: 'Basic' | 'Premium Pro';
+  tier: string;
   radius: number;
   phone: string;
   status: 'Approved' | 'Pending' | 'Rejected';
@@ -127,6 +127,7 @@ export interface SubscriptionPlan {
   name: string;
   price: number;
   radius: number;
+  maxCapacity?: number;
   features: string[];
 }
 
@@ -142,14 +143,16 @@ export const DEFAULT_PLANS: SubscriptionPlan[] = [
     name: 'Basic',
     price: 1500,
     radius: 5,
-    features: ['5km Dispatch Radius', '1 Active Emergency Job', 'Standard Directory Listing'],
+    maxCapacity: 3,
+    features: ['5km Dispatch Radius', '3 Concurrent Active Jobs', 'Standard Directory Listing'],
   },
   {
     id: 'plan-pro',
     name: 'Premium Pro',
     price: 5000,
     radius: 25,
-    features: ['25km Dispatch Radius', 'Unlimited Active Jobs', 'Priority Triage Banner', 'Fleet Analytics'],
+    maxCapacity: 5,
+    features: ['25km Dispatch Radius', '5 Concurrent Active Jobs', 'Priority Triage Banner', 'Fleet Analytics'],
   },
 ];
 
@@ -318,6 +321,7 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             name: p.name,
             price: p.price,
             radius: p.radius,
+            max_capacity: p.maxCapacity || p.max_capacity || 3,
             features: p.features || [],
           }));
           supabase.from('subscription_plans').upsert(payload).then(({ error }) => {

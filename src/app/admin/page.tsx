@@ -115,6 +115,7 @@ export default function SuperAdminDashboard() {
   const [newPlanName, setNewPlanName] = useState('');
   const [newPlanPrice, setNewPlanPrice] = useState<number | string>(3000);
   const [newPlanRadius, setNewPlanRadius] = useState<number | string>(15);
+  const [newPlanMaxCapacity, setNewPlanMaxCapacity] = useState<number | string>(5);
   const [newPlanFeature, setNewPlanFeature] = useState('');
   const [newPlanFeatures, setNewPlanFeatures] = useState<string[]>([]);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
@@ -128,13 +129,13 @@ export default function SuperAdminDashboard() {
   // Garage Capacity & Radius Edit State in Modal
   const [editMaxCapacity, setEditMaxCapacity] = useState<number | string>(3);
   const [editRadius, setEditRadius] = useState<number | string>(5);
-  const [editTier, setEditTier] = useState<'Basic' | 'Premium Pro'>('Basic');
+  const [editTier, setEditTier] = useState<string>('Basic');
 
   useEffect(() => {
     if (selectedMechanicModal) {
-      setEditMaxCapacity(selectedMechanicModal.maxCapacity || (selectedMechanicModal.tier === 'Premium Pro' ? 5 : 3));
-      setEditRadius(selectedMechanicModal.radius || (selectedMechanicModal.tier === 'Premium Pro' ? 25 : 5));
-      setEditTier(selectedMechanicModal.tier === 'Premium Pro' ? 'Premium Pro' : 'Basic');
+      setEditMaxCapacity(selectedMechanicModal.maxCapacity || 3);
+      setEditRadius(selectedMechanicModal.radius || 5);
+      setEditTier(selectedMechanicModal.tier || 'Basic');
     }
   }, [selectedMechanicModal]);
 
@@ -160,7 +161,7 @@ export default function SuperAdminDashboard() {
         tier: editTier,
       });
     }
-    alert(`Updated ${selectedMechanicModal?.businessName || 'Garage'}: Max Capacity set to ${newCap} jobs, Radius set to ${newRad}km!`);
+    alert(`Updated ${selectedMechanicModal?.businessName || 'Garage'}: Tier set to "${editTier}", Max Capacity to ${newCap} jobs, Radius to ${newRad}km!`);
   };
 
   const handleSavePlan = (e: React.FormEvent) => {
@@ -169,24 +170,21 @@ export default function SuperAdminDashboard() {
 
     const priceNum = Number(newPlanPrice) || 0;
     const radiusNum = Number(newPlanRadius) || 5;
+    const maxCapNum = Number(newPlanMaxCapacity) || 3;
     const targetPlanName = newPlanName.trim();
 
     if (editingPlanId) {
       const updated = plans.map((p) =>
         p.id === editingPlanId
-          ? { ...p, name: targetPlanName, price: priceNum, radius: radiusNum, features: newPlanFeatures }
+          ? { ...p, name: targetPlanName, price: priceNum, radius: radiusNum, maxCapacity: maxCapNum, features: newPlanFeatures }
           : p
       );
       setPlans(updated);
 
-      // Instantly propagate radius change to all mechanics on this plan tier!
+      // Instantly propagate radius & maxCapacity change to all mechanics on this plan tier!
       const updatedMechanics = mechanics.map((m) => {
-        if (
-          m.tier === targetPlanName ||
-          (targetPlanName === 'Basic' && m.tier === 'Basic') ||
-          (targetPlanName === 'Premium Pro' && m.tier === 'Premium Pro')
-        ) {
-          return { ...m, radius: radiusNum };
+        if (String(m.tier).toLowerCase() === targetPlanName.toLowerCase()) {
+          return { ...m, radius: radiusNum, maxCapacity: maxCapNum };
         }
         return m;
       });
@@ -199,17 +197,14 @@ export default function SuperAdminDashboard() {
         name: targetPlanName,
         price: priceNum,
         radius: radiusNum,
-        features: newPlanFeatures.length > 0 ? newPlanFeatures : [`${radiusNum}km Dispatch Radius`],
+        maxCapacity: maxCapNum,
+        features: newPlanFeatures.length > 0 ? newPlanFeatures : [`${radiusNum}km Dispatch Radius`, `${maxCapNum} Concurrent Active Jobs`],
       };
       setPlans([...plans, planObj]);
 
       const updatedMechanics = mechanics.map((m) => {
-        if (
-          m.tier === targetPlanName ||
-          (targetPlanName === 'Basic' && m.tier === 'Basic') ||
-          (targetPlanName === 'Premium Pro' && m.tier === 'Premium Pro')
-        ) {
-          return { ...m, radius: radiusNum };
+        if (String(m.tier).toLowerCase() === targetPlanName.toLowerCase()) {
+          return { ...m, radius: radiusNum, maxCapacity: maxCapNum };
         }
         return m;
       });
@@ -219,6 +214,7 @@ export default function SuperAdminDashboard() {
     setNewPlanName('');
     setNewPlanPrice(3000);
     setNewPlanRadius(15);
+    setNewPlanMaxCapacity(5);
     setNewPlanFeatures([]);
   };
 
@@ -227,6 +223,7 @@ export default function SuperAdminDashboard() {
     setNewPlanName(p.name);
     setNewPlanPrice(p.price);
     setNewPlanRadius(p.radius);
+    setNewPlanMaxCapacity(p.maxCapacity || 3);
     setNewPlanFeatures(p.features || []);
   };
 
@@ -411,10 +408,14 @@ export default function SuperAdminDashboard() {
     setMechanics(
       mechanics.map((m) => {
         if (String(m.id) === String(id)) {
-          const nextTier = m.tier === 'Premium Pro' ? 'Basic' : 'Premium Pro';
-          const nextRadius = nextTier === 'Premium Pro' ? 25 : 5;
-          const nextMaxCap = nextTier === 'Premium Pro' ? 15 : 5;
-          return { ...m, tier: nextTier, radius: nextRadius, maxCapacity: nextMaxCap };
+          const currentIndex = plans.findIndex((p) => p.name.toLowerCase() === String(m.tier).toLowerCase());
+          const nextPlan = plans[(currentIndex + 1) % (plans.length || 1)] || plans[0] || { name: 'Basic', radius: 5, maxCapacity: 3 };
+          return {
+            ...m,
+            tier: nextPlan.name,
+            radius: Number(nextPlan.radius) || 5,
+            maxCapacity: Number(nextPlan.maxCapacity) || 3,
+          };
         }
         return m;
       })

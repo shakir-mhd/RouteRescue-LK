@@ -31,7 +31,7 @@ import {
   Banknote,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs } from '@/utils/store';
+import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs, SubscriptionPlan, DEFAULT_PLANS } from '@/utils/store';
 import { supabase } from '../../utils/supabase';
 
 const GarageLocationPickerMap = dynamic(() => import('../../components/GarageLocationPickerInner'), {
@@ -62,7 +62,7 @@ interface Mechanic {
   city: string;
   lat: number;
   lng: number;
-  tier: 'Basic' | 'Premium Pro' | 'basic' | 'premium';
+  tier: string;
   radius: number;
   phone: string;
   nic: string;
@@ -99,6 +99,7 @@ export default function MechanicPortal() {
   // Synced Global States
   const [mechanics, setMechanics] = useSharedState<Mechanic[]>('routerescue_mechanics', SEED_MECHANICS);
   const [incidents, setIncidents] = useSharedState<Incident[]>('routerescue_incidents', []);
+  const [plans] = useSharedState<SubscriptionPlan[]>('routerescue_plans', DEFAULT_PLANS);
   const [currentMechanic, setCurrentMechanic] = useState<Mechanic | null>(null);
 
   // Tab & Form State
@@ -118,7 +119,7 @@ export default function MechanicPortal() {
   const [password, setPassword] = useState('');
   const [city, setCity] = useState('Colombo');
   const [workshopCoords, setWorkshopCoords] = useState<[number, number]>([6.9271, 79.8612]);
-  const [tier, setTier] = useState<'Basic' | 'Premium Pro'>('Basic');
+  const [tier, setTier] = useState<string>('Basic');
   const [formError, setFormError] = useState('');
 
   // Employee CRUD State
@@ -375,6 +376,10 @@ export default function MechanicPortal() {
       return;
     }
 
+    const matchedPlan = plans.find((p) => p.name.toLowerCase() === String(tier).toLowerCase()) || plans[0];
+    const mechRadius = matchedPlan ? Number(matchedPlan.radius) : 5;
+    const mechMaxCap = matchedPlan ? Number(matchedPlan.maxCapacity || 3) : 3;
+
     const newMech: Mechanic = {
       id: `mech-${Date.now()}`,
       name,
@@ -382,15 +387,15 @@ export default function MechanicPortal() {
       city,
       lat: workshopCoords[0],
       lng: workshopCoords[1],
-      tier,
-      radius: tier === 'Premium Pro' ? 25 : 5,
+      tier: matchedPlan ? matchedPlan.name : tier,
+      radius: mechRadius,
       phone,
       nic,
       password,
       status: 'Pending',
       isAvailable: true,
       activeJobs: 0,
-      maxCapacity: tier === 'Premium Pro' ? 5 : 3,
+      maxCapacity: mechMaxCap,
       employees: [
         { id: `emp-${Date.now()}`, name, phone, role: 'Lead Mechanic' }
       ]
@@ -1142,32 +1147,25 @@ export default function MechanicPortal() {
 
                 <div>
                   <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
-                    Subscription Radius Plan
+                    Select Subscription Radius Plan
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setTier('Basic')}
-                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${tier === 'Basic'
-                          ? 'border-accent-green bg-accent-green/10 text-emerald-300'
-                          : 'border-slate-800 bg-slate-900 text-slate-400'
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {plans.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setTier(p.name)}
+                        className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                          tier.toLowerCase() === p.name.toLowerCase()
+                            ? 'border-amber-500 bg-amber-500/10 text-amber-300 shadow-md font-bold'
+                            : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700'
                         }`}
-                    >
-                      <div className="text-xs font-bold">Basic Tier</div>
-                      <div className="text-[9px] text-slate-500">1,500 LKR/mo • 5km</div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setTier('Premium Pro')}
-                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${tier === 'Premium Pro'
-                          ? 'border-amber-500 bg-amber-500/10 text-amber-300'
-                          : 'border-slate-800 bg-slate-900 text-slate-400'
-                        }`}
-                    >
-                      <div className="text-xs font-bold">Premium Pro</div>
-                      <div className="text-[9px] text-slate-500">5,000 LKR/mo • 25km</div>
-                    </button>
+                      >
+                        <div className="text-xs font-bold text-slate-200">{p.name}</div>
+                        <div className="text-[10px] text-amber-400 font-mono mt-0.5">{p.price.toLocaleString()} LKR/mo</div>
+                        <div className="text-[9px] text-slate-400 mt-0.5">{p.radius}km Radius • Max {p.maxCapacity || 3} Jobs</div>
+                      </button>
+                    ))}
                   </div>
                 </div>
 

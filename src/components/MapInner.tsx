@@ -24,7 +24,7 @@ interface Mechanic {
   city?: string;
   lat: number;
   lng: number;
-  tier: 'Basic' | 'Premium Pro' | 'basic' | 'premium';
+  tier: string;
   radius?: number;
   isAvailable?: boolean;
   isOpen?: boolean;
@@ -101,7 +101,7 @@ const createIncidentIcon = (category: string) => {
   });
 };
 
-const createMechanicIcon = (tier: 'Basic' | 'Premium Pro' | 'basic' | 'premium') => {
+const createMechanicIcon = (tier: string) => {
   const isPremium = tier === 'Premium Pro' || (tier as string) === 'premium';
   const colorClass = isPremium ? 'bg-amber-500' : 'bg-emerald-500';
   return L.divIcon({

@@ -22,7 +22,7 @@ interface Mechanic {
   businessName?: string;
   lat: number;
   lng: number;
-  tier: 'Basic' | 'Premium Pro' | 'basic' | 'premium';
+  tier: string;
   isAvailable?: boolean;
   pendingLocation?: any;
 }

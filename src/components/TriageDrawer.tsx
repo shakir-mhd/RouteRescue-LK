@@ -11,7 +11,7 @@ interface Mechanic {
   phone?: string;
   lat: number;
   lng: number;
-  tier: 'Basic' | 'Premium Pro' | 'basic' | 'premium';
+  tier: string;
   radius: number;
   isAvailable?: boolean;
   isOpen?: boolean;
