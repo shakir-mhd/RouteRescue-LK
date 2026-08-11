@@ -1633,9 +1633,18 @@ export default function MechanicPortal() {
                                 {new Date(inc.timestamp).toLocaleString()}
                               </td>
                               <td className="py-3">
-                                <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase">
-                                  Resolved
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
+                                  inc.status === 'Resolved'
+                                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                    : 'bg-red-500/20 text-red-400 border-red-500/30'
+                                }`}>
+                                  {inc.status === 'Resolved' ? 'Resolved' : `Cancelled (${inc.cancelledBy || 'System'})`}
                                 </span>
+                                {inc.status === 'Cancelled' && inc.cancellationReason && (
+                                  <p className="text-[10px] text-red-300 mt-1 italic leading-tight">
+                                    Reason: {inc.cancellationReason}
+                                  </p>
+                                )}
                               </td>
                             </tr>
                           ))}
