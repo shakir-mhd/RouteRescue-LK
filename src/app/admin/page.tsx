@@ -1599,7 +1599,7 @@ export default function SuperAdminDashboard() {
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-400 mt-0.5">
-                        {p.radius}km Dispatch Radius • {p.features?.length || 0} features
+                        {p.radius}km Dispatch Radius • Max {p.maxCapacity || 3} Concurrent Bookings • {p.features?.length || 0} features
                       </div>
                     </div>
                     <div className="flex gap-1.5">
@@ -1626,13 +1626,13 @@ export default function SuperAdminDashboard() {
                   {editingPlanId ? 'Edit Subscription Plan' : 'Create New Subscription Plan'}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                   <div>
                     <label className="text-[9px] text-slate-400 uppercase font-bold block mb-1">Plan Name</label>
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Enterprise Pro"
+                      placeholder="e.g. Basic / Enterprise Pro"
                       value={newPlanName}
                       onChange={(e) => setNewPlanName(e.target.value)}
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
@@ -1643,6 +1643,7 @@ export default function SuperAdminDashboard() {
                     <input
                       type="number"
                       required
+                      placeholder="e.g. 2000"
                       value={newPlanPrice}
                       onChange={(e) => setNewPlanPrice(e.target.value === '' ? '' : e.target.value)}
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
@@ -1653,8 +1654,20 @@ export default function SuperAdminDashboard() {
                     <input
                       type="number"
                       required
+                      placeholder="e.g. 10"
                       value={newPlanRadius}
                       onChange={(e) => setNewPlanRadius(e.target.value === '' ? '' : e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] text-slate-400 uppercase font-bold block mb-1">Max Bookings (Capacity)</label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="e.g. 5"
+                      value={newPlanMaxCapacity}
+                      onChange={(e) => setNewPlanMaxCapacity(e.target.value === '' ? '' : e.target.value)}
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
                     />
                   </div>

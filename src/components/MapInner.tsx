@@ -352,15 +352,13 @@ export default function MapInner({
                   <div className="font-black text-emerald-400 text-xs sm:text-sm flex items-center gap-1">
                     🏢 {mech.businessName || mech.name}
                   </div>
-                  {(mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium') ? (
-                    <span className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/40 font-black shrink-0">
-                      PRO ({mech.radius || 25}km)
-                    </span>
-                  ) : (
-                    <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/40 font-black shrink-0">
-                      BASIC ({mech.radius || 5}km)
-                    </span>
-                  )}
+                  <span className={`text-[9px] px-2 py-0.5 rounded-full border font-black shrink-0 uppercase ${
+                    (mech.tier || '').toLowerCase().includes('pro') || (mech.tier || '').toLowerCase().includes('premium')
+                      ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                      : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                  }`}>
+                    {mech.tier || 'BASIC'} ({mech.radius || 5}km)
+                  </span>
                 </div>
 
                 <div className="space-y-1 bg-slate-950/80 p-2 rounded-xl border border-slate-800 text-[11px]">
