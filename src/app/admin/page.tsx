@@ -8,7 +8,7 @@ import {
   Building2, Users, Settings, Eye, RefreshCw, X, AlertTriangle, FileText,
   Calendar, Trash2, CheckCircle, Phone, Clock, ShieldCheck, MapPin, ExternalLink, LogOut
 } from 'lucide-react';
-import { useSharedState, Incident, Mechanic, SEED_MECHANICS, DEFAULT_ADMIN_SETTINGS, AdminSettings, SubscriptionPlan, DEFAULT_PLANS, addCancelledIncidentId, getCancelledIncidentIds } from '../../utils/store';
+import { useSharedState, Incident, Mechanic, SEED_MECHANICS, DEFAULT_ADMIN_SETTINGS, AdminSettings, SubscriptionPlan, DEFAULT_PLANS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs } from '../../utils/store';
 import { supabase } from '../../utils/supabase';
 import dynamic from 'next/dynamic';
 
@@ -90,7 +90,7 @@ export default function SuperAdminDashboard() {
                 }
               }
             }
-            merged.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+            merged.sort((a, b) => parseTimestampMs(b.timestamp) - parseTimestampMs(a.timestamp));
             return merged;
           });
         }
@@ -526,7 +526,7 @@ export default function SuperAdminDashboard() {
       const dateStr = new Date(i.timestamp).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       return dateStr.toLowerCase().includes(selectedMonth.toLowerCase());
     })
-    .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+    .sort((a, b) => parseTimestampMs(b.timestamp) - parseTimestampMs(a.timestamp));
 
   if (!isAdmin) {
     return (

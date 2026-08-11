@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Phone, ArrowLeft, Key, User, Lock, FileText, MapPin, Compass, LogOut, Navigation, AlertTriangle } from 'lucide-react';
-import { useSharedState, Incident, Mechanic, Driver, SEED_MECHANICS, calculateDistanceKm, SRI_LANKA_REGIONS, addCancelledIncidentId, getCancelledIncidentIds } from '../../utils/store';
+import { useSharedState, Incident, Mechanic, Driver, SEED_MECHANICS, calculateDistanceKm, SRI_LANKA_REGIONS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs } from '../../utils/store';
 import { supabase } from '../../utils/supabase';
 import MapDashboard from '../../components/MapDashboard';
 import TriageDrawer from '../../components/TriageDrawer';
@@ -165,7 +165,7 @@ export default function MotoristPortal() {
                 }
               }
             }
-            merged.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+            merged.sort((a, b) => parseTimestampMs(b.timestamp) - parseTimestampMs(a.timestamp));
             return merged;
           });
         }

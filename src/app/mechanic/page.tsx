@@ -26,7 +26,7 @@ import {
   Power,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS, addCancelledIncidentId, getCancelledIncidentIds } from '@/utils/store';
+import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs } from '@/utils/store';
 import { supabase } from '../../utils/supabase';
 
 const GarageLocationPickerMap = dynamic(() => import('../../components/GarageLocationPickerInner'), {
@@ -278,7 +278,7 @@ export default function MechanicPortal() {
                 }
               }
             }
-            merged.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+            merged.sort((a, b) => parseTimestampMs(b.timestamp) - parseTimestampMs(a.timestamp));
             return merged;
           });
         }
@@ -759,7 +759,7 @@ export default function MechanicPortal() {
   const completedJobsForGarage = currentMechanic
     ? incidents
         .filter((i) => String(i.mechanicId) === String(currentMechanic.id) && (i.status === 'Resolved' || i.status === 'Cancelled'))
-        .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
+        .sort((a, b) => parseTimestampMs(b.timestamp) - parseTimestampMs(a.timestamp))
     : [];
 
   const handleUpdatePassword = (e: React.FormEvent) => {

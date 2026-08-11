@@ -108,6 +108,20 @@ export function addCancelledIncidentId(id: string) {
   }
 }
 
+export function parseTimestampMs(ts: any): number {
+  if (!ts) return 0;
+  if (typeof ts === 'number') return ts;
+  const str = String(ts).trim();
+  const numericMatch = str.match(/\d{13}/);
+  if (numericMatch) {
+    const num = Number(numericMatch[0]);
+    if (!isNaN(num) && num > 1000000000000) return num;
+  }
+  const parsed = Date.parse(str);
+  if (!isNaN(parsed)) return parsed;
+  return 0;
+}
+
 export interface SubscriptionPlan {
   id: string;
   name: string;
@@ -412,7 +426,7 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
                 cancellationReason: inc.cancellation_reason || inc.cancellationReason || undefined,
                 cancelledBy: inc.cancelled_by || inc.cancelledBy || undefined,
               }));
-              mapped.sort((a: any, b: any) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+              mapped.sort((a: any, b: any) => parseTimestampMs(b.timestamp) - parseTimestampMs(a.timestamp));
               setState(mapped as unknown as T);
               window.localStorage.setItem(key, JSON.stringify(mapped));
             }
