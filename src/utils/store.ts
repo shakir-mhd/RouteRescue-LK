@@ -234,7 +234,28 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             cancelled_by: inc.cancelledBy || inc.cancelled_by || null,
           }));
           supabase.from('incidents').upsert(payload).then(({ error }) => {
-            if (error) console.error('Supabase incidents upsert error:', error);
+            if (error) {
+              console.error('Supabase incidents upsert error:', error);
+              if (error.code === 'PGRST204') {
+                const fallbackPayload = valueToStore.map((inc: any) => ({
+                  id: String(inc.id),
+                  category: inc.category || 'Breakdown',
+                  lat: Number(inc.lat),
+                  lng: Number(inc.lng),
+                  status: inc.status || 'Request Sent',
+                  base_tariff: Number(inc.baseTariff || inc.base_tariff || 1000),
+                  timestamp: inc.timestamp || new Date().toISOString(),
+                  mechanic_id: String(inc.mechanicId || inc.mechanic_id || ''),
+                  distance_km: Number(inc.distanceKm || inc.distance_km || 0),
+                  driver_name: inc.driverName || inc.driver_name || 'Anonymous Motorist',
+                  driver_phone: inc.driverPhone || inc.driver_phone || '',
+                  assigned_employee: inc.assignedEmployee || inc.assigned_employee || null,
+                }));
+                supabase.from('incidents').upsert(fallbackPayload).then(({ error: fbErr }) => {
+                  if (fbErr) console.error('Supabase fallback incidents upsert error:', fbErr);
+                });
+              }
+            }
           });
         } else if (key === 'routerescue_admin_settings' && valueToStore) {
           const payload = {

@@ -148,7 +148,22 @@ export default function MotoristPortal() {
             cancelledBy: d.cancelled_by ? (String(d.cancelled_by) as any) : undefined,
           }));
 
-          setIncidents(formattedIncidents);
+          setIncidents((prevIncidents) => {
+            const merged = [...formattedIncidents];
+            for (const localInc of prevIncidents) {
+              if (localInc.status === 'Cancelled' || localInc.status === 'Resolved') {
+                const idx = merged.findIndex((m) => String(m.id) === String(localInc.id));
+                if (idx >= 0) {
+                  if (merged[idx].status !== 'Cancelled' && merged[idx].status !== 'Resolved') {
+                    merged[idx] = { ...merged[idx], ...localInc };
+                  }
+                } else {
+                  merged.push(localInc);
+                }
+              }
+            }
+            return merged;
+          });
         }
       } catch (err) {
         console.error('Real-time motorist incidents heartbeat error:', err);
@@ -527,7 +542,27 @@ export default function MotoristPortal() {
       };
 
       const { error } = await supabase.from('incidents').upsert([payload]);
-      if (error) console.error('Supabase incident driver cancel error:', error);
+      if (error) {
+        console.error('Supabase incident driver cancel error:', error);
+        if (error.code === 'PGRST204') {
+          await supabase.from('incidents').update({ status: 'Cancelled' }).eq('id', String(activeIncident.id));
+          const fallbackPayload = {
+            id: String(cancelledIncident.id),
+            category: cancelledIncident.category,
+            lat: Number(cancelledIncident.lat),
+            lng: Number(cancelledIncident.lng),
+            status: 'Cancelled',
+            base_tariff: Number(cancelledIncident.baseTariff || 1000),
+            timestamp: cancelledIncident.timestamp || new Date().toISOString(),
+            mechanic_id: String(cancelledIncident.mechanicId || ''),
+            distance_km: Number(cancelledIncident.distanceKm || 0),
+            driver_name: cancelledIncident.driverName || 'Anonymous Motorist',
+            driver_phone: cancelledIncident.driverPhone || '',
+            assigned_employee: cancelledIncident.assignedEmployee || null,
+          };
+          await supabase.from('incidents').upsert([fallbackPayload]);
+        }
+      }
 
       if (activeIncident.mechanicId) {
         await supabase

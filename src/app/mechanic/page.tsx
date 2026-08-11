@@ -200,6 +200,7 @@ export default function MechanicPortal() {
 
   // Audio Beep Context
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const alertedIncidentIdsRef = useRef<Set<string>>(new Set());
 
   // Hydrate local session cleanly and auto-sync approval status
   useEffect(() => {
@@ -229,7 +230,7 @@ export default function MechanicPortal() {
             setCurrentMechanic(sessionObj);
           }
         } catch (e) {
-          console.error('Session parse error', e);
+          console.error(e);
         }
       }
     }
@@ -260,7 +261,22 @@ export default function MechanicPortal() {
             cancelledBy: d.cancelled_by ? (String(d.cancelled_by) as any) : undefined,
           }));
 
-          setIncidents(formattedIncidents);
+          setIncidents((prevIncidents) => {
+            const merged = [...formattedIncidents];
+            for (const localInc of prevIncidents) {
+              if (localInc.status === 'Cancelled' || localInc.status === 'Resolved') {
+                const idx = merged.findIndex((m) => String(m.id) === String(localInc.id));
+                if (idx >= 0) {
+                  if (merged[idx].status !== 'Cancelled' && merged[idx].status !== 'Resolved') {
+                    merged[idx] = { ...merged[idx], ...localInc };
+                  }
+                } else {
+                  merged.push(localInc);
+                }
+              }
+            }
+            return merged;
+          });
         }
       } catch (err) {
         console.error('Real-time incidents heartbeat error:', err);
@@ -306,10 +322,12 @@ export default function MechanicPortal() {
     : [];
 
   useEffect(() => {
-    if (pendingForThisGarage.length > 0) {
+    const unalerted = pendingForThisGarage.filter((inc) => !alertedIncidentIdsRef.current.has(inc.id));
+    if (unalerted.length > 0) {
       playIncomingAlertSound();
+      unalerted.forEach((inc) => alertedIncidentIdsRef.current.add(inc.id));
     }
-  }, [pendingForThisGarage.length]);
+  }, [pendingForThisGarage]);
 
   const validateNIC = (value: string) => {
     const oldNicRegex = /^[0-9]{9}[vVxX]$/;
@@ -620,18 +638,19 @@ export default function MechanicPortal() {
     setMechanics(mechanics.map((m) => (String(m.id) === String(currentMechanic.id) ? updatedMech : m)));
 
     if (typeof window !== 'undefined') {
+      localStorage.setItem('routerescue_incidents', JSON.stringify(updatedIncidents));
       const activeIncStr = localStorage.getItem('routerescue_active_incident');
       if (activeIncStr) {
         try {
           const activeInc = JSON.parse(activeIncStr);
-          if (activeInc && activeInc.id === incidentId) {
+          if (activeInc && String(activeInc.id) === String(incidentId)) {
             localStorage.setItem('routerescue_active_incident', JSON.stringify(cancelledIncident));
-            window.dispatchEvent(new Event('local-storage-sync'));
           }
         } catch (e) {
           console.error(e);
         }
       }
+      window.dispatchEvent(new Event('local-storage-sync'));
     }
 
     try {
@@ -652,8 +671,34 @@ export default function MechanicPortal() {
         cancelled_by: 'mechanic',
       };
 
+      await supabase.from('incidents').update({
+        status: 'Cancelled',
+        cancellation_reason: reason.trim(),
+        cancelled_by: 'mechanic',
+      }).eq('id', String(incidentId));
+
       const { error: incErr } = await supabase.from('incidents').upsert([payload]);
-      if (incErr) console.error('Supabase mechanic incident cancel error:', incErr);
+      if (incErr) {
+        console.error('Supabase mechanic incident cancel error:', incErr);
+        if (incErr.code === 'PGRST204') {
+          await supabase.from('incidents').update({ status: 'Cancelled' }).eq('id', String(incidentId));
+          const fallbackPayload = {
+            id: String(cancelledIncident.id),
+            category: cancelledIncident.category,
+            lat: Number(cancelledIncident.lat),
+            lng: Number(cancelledIncident.lng),
+            status: 'Cancelled',
+            base_tariff: Number(cancelledIncident.baseTariff || 1000),
+            timestamp: cancelledIncident.timestamp || new Date().toISOString(),
+            mechanic_id: String(cancelledIncident.mechanicId || ''),
+            distance_km: Number(cancelledIncident.distanceKm || 0),
+            driver_name: cancelledIncident.driverName || 'Anonymous Motorist',
+            driver_phone: cancelledIncident.driverPhone || '',
+            assigned_employee: cancelledIncident.assignedEmployee || null,
+          };
+          await supabase.from('incidents').upsert([fallbackPayload]);
+        }
+      }
 
       await supabase
         .from('mechanics')
