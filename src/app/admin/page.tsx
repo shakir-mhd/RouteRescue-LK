@@ -173,7 +173,7 @@ export default function SuperAdminDashboard() {
     alert(`Updated ${selectedMechanicModal?.businessName || 'Garage'}: Tier set to "${editTier}", Max Capacity to ${newCap} jobs, Radius to ${newRad}km!`);
   };
 
-  const handleSavePlan = (e: React.FormEvent) => {
+  const handleSavePlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPlanName.trim()) return;
 
@@ -182,16 +182,17 @@ export default function SuperAdminDashboard() {
     const maxCapNum = Number(newPlanMaxCapacity) || 0;
     const targetPlanName = newPlanName.trim();
 
+    let updatedPlansList: SubscriptionPlan[];
+
     if (editingPlanId) {
       const oldPlan = plans.find((p) => p.id === editingPlanId);
       const oldPlanName = oldPlan ? oldPlan.name : targetPlanName;
 
-      const updated = plans.map((p) =>
+      updatedPlansList = plans.map((p) =>
         p.id === editingPlanId
           ? { ...p, name: targetPlanName, price: priceNum, radius: radiusNum, maxCapacity: maxCapNum, features: newPlanFeatures }
           : p
       );
-      setPlans(updated);
 
       // Instantly propagate tier name, radius & maxCapacity change to all mechanics on this plan tier!
       const updatedMechanics = mechanics.map((m) => {
@@ -209,7 +210,6 @@ export default function SuperAdminDashboard() {
         return m;
       });
       setMechanics(updatedMechanics);
-
       setEditingPlanId(null);
     } else {
       const planObj: SubscriptionPlan = {
@@ -220,7 +220,7 @@ export default function SuperAdminDashboard() {
         maxCapacity: maxCapNum,
         features: newPlanFeatures.length > 0 ? newPlanFeatures : [`${radiusNum}km Dispatch Radius`, `${maxCapNum} Concurrent Active Jobs`],
       };
-      setPlans([...plans, planObj]);
+      updatedPlansList = [...plans, planObj];
 
       const updatedMechanics = mechanics.map((m) => {
         if (String(m.tier).toLowerCase() === targetPlanName.toLowerCase()) {
@@ -233,6 +233,24 @@ export default function SuperAdminDashboard() {
         return m;
       });
       setMechanics(updatedMechanics);
+    }
+
+    setPlans(updatedPlansList);
+
+    // Sync to Supabase cloud database
+    try {
+      const payload = updatedPlansList.map((p) => ({
+        id: String(p.id),
+        name: p.name,
+        price: p.price,
+        radius: p.radius,
+        max_capacity: p.maxCapacity || 3,
+        features: p.features || [],
+      }));
+      const { error } = await supabase.from('subscription_plans').upsert(payload);
+      if (error) console.error('Supabase subscription_plans save error:', error);
+    } catch (err) {
+      console.error('Error syncing plans to Supabase:', err);
     }
 
     setNewPlanName('');
