@@ -121,3 +121,33 @@ create policy "Drivers can report new incidents" on public.incidents
 
 create policy "Assigned mechanics or driver can update incident state" on public.incidents
   for update using (auth.uid() = driver_id or auth.uid() = assigned_mechanic_id);
+
+-- 8. Create Subscription Plans Table (Dynamic Admin Subscription Tiers)
+create table if not exists public.subscription_plans (
+  id text primary key,
+  name text not null unique,
+  price numeric not null,
+  radius numeric not null,
+  max_capacity numeric default 3,
+  features text[] default '{}',
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- 9. Create Admin Settings Table (System Tariff & Passcode Config)
+create table if not exists public.admin_settings (
+  id integer primary key default 1,
+  passcode text not null default '2004',
+  flat_rate numeric not null default 1000,
+  per_km_rate numeric not null default 200,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- Configure RLS for Subscription Plans & Admin Settings
+alter table public.subscription_plans enable row level security;
+alter table public.admin_settings enable row level security;
+
+create policy "Anyone can read subscription plans" on public.subscription_plans for select using (true);
+create policy "Anyone can manage subscription plans" on public.subscription_plans for all using (true);
+
+create policy "Anyone can read admin settings" on public.admin_settings for select using (true);
+create policy "Anyone can manage admin settings" on public.admin_settings for all using (true);

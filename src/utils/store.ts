@@ -447,18 +447,34 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
               window.localStorage.setItem(key, JSON.stringify(mapped));
             }
           } else if (key === 'routerescue_plans') {
-            const { data } = await supabase.from('subscription_plans').select('*');
-            if (data && data.length > 0) {
-              const mapped: SubscriptionPlan[] = data.map((p: any) => ({
-                id: p.id,
+            const { data, error } = await supabase.from('subscription_plans').select('*');
+            let mappedFromSupabase: SubscriptionPlan[] = [];
+            if (!error && data && data.length > 0) {
+              mappedFromSupabase = data.map((p: any) => ({
+                id: String(p.id),
                 name: p.name,
                 price: Number(p.price),
                 radius: Number(p.radius),
                 maxCapacity: Number(p.max_capacity || p.maxCapacity || 3),
                 features: Array.isArray(p.features) ? p.features : [],
               }));
-              setState(mapped as unknown as T);
-              window.localStorage.setItem(key, JSON.stringify(mapped));
+            }
+
+            let currentLocal: SubscriptionPlan[] = [];
+            try {
+              const localStr = window.localStorage.getItem(key);
+              if (localStr) currentLocal = JSON.parse(localStr);
+            } catch (e) {}
+
+            // Merge local and Supabase plans by ID/Name so custom newly added plans are NEVER lost on page refresh!
+            const planMap = new Map<string, SubscriptionPlan>();
+            currentLocal.forEach((p) => planMap.set(String(p.name).toLowerCase(), p));
+            mappedFromSupabase.forEach((p) => planMap.set(String(p.name).toLowerCase(), p));
+
+            const mergedPlans = Array.from(planMap.values());
+            if (mergedPlans.length > 0) {
+              setState(mergedPlans as unknown as T);
+              window.localStorage.setItem(key, JSON.stringify(mergedPlans));
             }
           }
         } catch (e) {
