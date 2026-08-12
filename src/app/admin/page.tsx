@@ -183,6 +183,9 @@ export default function SuperAdminDashboard() {
     const targetPlanName = newPlanName.trim();
 
     if (editingPlanId) {
+      const oldPlan = plans.find((p) => p.id === editingPlanId);
+      const oldPlanName = oldPlan ? oldPlan.name : targetPlanName;
+
       const updated = plans.map((p) =>
         p.id === editingPlanId
           ? { ...p, name: targetPlanName, price: priceNum, radius: radiusNum, maxCapacity: maxCapNum, features: newPlanFeatures }
@@ -190,10 +193,18 @@ export default function SuperAdminDashboard() {
       );
       setPlans(updated);
 
-      // Instantly propagate radius & maxCapacity change to all mechanics on this plan tier!
+      // Instantly propagate tier name, radius & maxCapacity change to all mechanics on this plan tier!
       const updatedMechanics = mechanics.map((m) => {
-        if (String(m.tier).toLowerCase() === targetPlanName.toLowerCase()) {
-          return { ...m, radius: radiusNum, maxCapacity: maxCapNum };
+        if (
+          String(m.tier).toLowerCase() === targetPlanName.toLowerCase() ||
+          String(m.tier).toLowerCase() === oldPlanName.toLowerCase()
+        ) {
+          return {
+            ...m,
+            tier: targetPlanName,
+            radius: radiusNum > 0 ? radiusNum : m.radius,
+            maxCapacity: maxCapNum > 0 ? maxCapNum : m.maxCapacity,
+          };
         }
         return m;
       });
@@ -213,7 +224,11 @@ export default function SuperAdminDashboard() {
 
       const updatedMechanics = mechanics.map((m) => {
         if (String(m.tier).toLowerCase() === targetPlanName.toLowerCase()) {
-          return { ...m, radius: radiusNum, maxCapacity: maxCapNum };
+          return {
+            ...m,
+            radius: radiusNum > 0 ? radiusNum : m.radius,
+            maxCapacity: maxCapNum > 0 ? maxCapNum : m.maxCapacity,
+          };
         }
         return m;
       });
@@ -238,7 +253,11 @@ export default function SuperAdminDashboard() {
 
   const handleDeletePlan = (planId: string) => {
     if (confirm('Are you sure you want to delete this subscription plan?')) {
-      setPlans(plans.filter((p) => p.id !== planId));
+      const updatedPlans = plans.filter((p) => p.id !== planId);
+      setPlans(updatedPlans);
+      supabase.from('subscription_plans').delete().eq('id', String(planId)).then(({ error }) => {
+        if (error) console.error('Supabase subscription_plans delete error:', error);
+      });
     }
   };
 

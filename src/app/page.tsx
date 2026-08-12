@@ -116,7 +116,7 @@ export default function LandingPage() {
                 </span>
               </h3>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                Onboard garages with NIC check, pick Basic vs Premium Pro subscription tiers, and accept open incidents.
+                Onboard garages with NIC check, pick subscription tiers, and accept open incidents.
               </p>
             </div>
           </framerMotion.button>

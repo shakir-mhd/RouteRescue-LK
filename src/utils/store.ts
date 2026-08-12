@@ -454,6 +454,7 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
                 name: p.name,
                 price: Number(p.price),
                 radius: Number(p.radius),
+                maxCapacity: Number(p.max_capacity || p.maxCapacity || 3),
                 features: Array.isArray(p.features) ? p.features : [],
               }));
               setState(mapped as unknown as T);

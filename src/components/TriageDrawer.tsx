@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, AlertTriangle, BatteryCharging, ShieldAlert, Store, Navigation, Clock, CheckCircle2, Star } from 'lucide-react';
+import { useSharedState, DEFAULT_ADMIN_SETTINGS, AdminSettings } from '@/utils/store';
 
 interface Mechanic {
   id: string | number;
@@ -74,6 +75,7 @@ export default function TriageDrawer({
   mechanics,
   onSubmitIncident,
 }: TriageDrawerProps) {
+  const [adminSettings] = useSharedState<AdminSettings>('routerescue_admin_settings', DEFAULT_ADMIN_SETTINGS);
   const [selectedSymptom, setSelectedSymptom] = useState<string | null>(null);
   const [nearbyGarages, setNearbyGarages] = useState<NearbyOption[]>([]);
   const [selectedGarageId, setSelectedGarageId] = useState<string | number | null>(null);
@@ -92,6 +94,9 @@ export default function TriageDrawer({
     return R * c;
   };
 
+  const flatArrivalFee = Number(adminSettings?.flatRate) || 1000;
+  const distanceRate = Number(adminSettings?.perKmRate) || 150;
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -99,17 +104,17 @@ export default function TriageDrawer({
 
     mechanics.forEach((mech) => {
       if (mech.isOpen === false) return; // Closed / On Leave garages cannot accept emergency calls
-      const maxCap = mech.maxCapacity || (mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium' ? 5 : 3);
+      const maxCap = Number(mech.maxCapacity) || 3;
       const activeJobsCount = mech.activeJobs || 0;
       if (activeJobsCount >= maxCap) return;
 
       const d = getDistanceInKm(reportLocation[0], reportLocation[1], mech.lat, mech.lng);
-      const maxRadius = Number(mech.radius) || (mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium' ? 25 : 5);
+      const maxRadius = Number(mech.radius) || 5;
 
       if (d <= maxRadius) {
         const distKm = parseFloat(d.toFixed(1));
-        const distSurcharge = Math.ceil(distKm * 150);
-        const totalFee = 1000 + distSurcharge;
+        const distSurcharge = Math.ceil(distKm * distanceRate);
+        const totalFee = flatArrivalFee + distSurcharge;
         const etaMins = Math.max(2, Math.round(2 + distKm * 2.5));
 
         options.push({
@@ -136,7 +141,7 @@ export default function TriageDrawer({
     } else {
       setSelectedGarageId(null);
     }
-  }, [reportLocation, mechanics, isOpen]);
+  }, [reportLocation, mechanics, isOpen, flatArrivalFee, distanceRate]);
 
   const selectedOption = nearbyGarages.find((opt) => String(opt.garage.id) === String(selectedGarageId));
 
@@ -292,7 +297,7 @@ export default function TriageDrawer({
                                   {opt.totalFee.toLocaleString()} LKR
                                 </div>
                                 <div className="text-[9px] text-slate-500">
-                                  Base 1,000 + {opt.surcharge} LKR
+                                  Base {flatArrivalFee.toLocaleString()} + {opt.surcharge.toLocaleString()} LKR
                                 </div>
                               </div>
                             </div>
