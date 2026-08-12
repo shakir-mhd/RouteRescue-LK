@@ -333,7 +333,22 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             features: p.features || [],
           }));
           supabase.from('subscription_plans').upsert(payload).then(({ error }) => {
-            if (error) console.error('Supabase subscription_plans upsert error:', error);
+            if (error) {
+              if (error.code === 'PGRST204' || (error.message && error.message.includes('max_capacity'))) {
+                const fallbackPayload = valueToStore.map((p: any) => ({
+                  id: String(p.id),
+                  name: p.name,
+                  price: p.price,
+                  radius: p.radius,
+                  features: p.features || [],
+                }));
+                supabase.from('subscription_plans').upsert(fallbackPayload).then(({ error: fbErr }) => {
+                  if (fbErr) console.warn('Supabase fallback plan sync note:', fbErr.message);
+                });
+              } else {
+                console.warn('Supabase subscription_plans sync note:', error.message);
+              }
+            }
           });
         }
       }
@@ -457,12 +472,28 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
           } else if (key === 'routerescue_plans') {
             const { data, error } = await supabase.from('subscription_plans').select('*');
             if (!error && data && data.length > 0) {
+              let currentLocal: SubscriptionPlan[] = [];
+              try {
+                const localStr = window.localStorage.getItem(key);
+                if (localStr) currentLocal = JSON.parse(localStr);
+              } catch (e) {}
+
+              const localCapacityMap = new Map<string, number>();
+              currentLocal.forEach((lp) => {
+                if (lp.maxCapacity !== undefined) {
+                  localCapacityMap.set(String(lp.id), lp.maxCapacity);
+                  localCapacityMap.set(String(lp.name).toLowerCase(), lp.maxCapacity);
+                }
+              });
+
               const mappedFromSupabase: SubscriptionPlan[] = data.map((p: any) => ({
                 id: String(p.id),
                 name: String(p.name),
                 price: Number(p.price),
                 radius: Number(p.radius),
-                maxCapacity: Number(p.max_capacity || p.maxCapacity || 3),
+                maxCapacity: Number(
+                  p.max_capacity ?? p.maxCapacity ?? localCapacityMap.get(String(p.id)) ?? localCapacityMap.get(String(p.name).toLowerCase()) ?? 3
+                ),
                 features: Array.isArray(p.features) ? p.features : [],
               }));
               setState(mappedFromSupabase as unknown as T);

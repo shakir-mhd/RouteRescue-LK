@@ -237,7 +237,7 @@ export default function SuperAdminDashboard() {
 
     setPlans(updatedPlansList);
 
-    // Sync to Supabase cloud database
+    // Sync to Supabase cloud database with schema error fallback
     try {
       const payload = updatedPlansList.map((p) => ({
         id: String(p.id),
@@ -248,9 +248,22 @@ export default function SuperAdminDashboard() {
         features: p.features || [],
       }));
       const { error } = await supabase.from('subscription_plans').upsert(payload);
-      if (error) console.error('Supabase subscription_plans save error:', error);
+      if (error) {
+        if (error.code === 'PGRST204' || (error.message && error.message.includes('max_capacity'))) {
+          const fallbackPayload = updatedPlansList.map((p) => ({
+            id: String(p.id),
+            name: p.name,
+            price: p.price,
+            radius: p.radius,
+            features: p.features || [],
+          }));
+          await supabase.from('subscription_plans').upsert(fallbackPayload);
+        } else {
+          console.warn('Supabase subscription_plans save note:', error.message);
+        }
+      }
     } catch (err) {
-      console.error('Error syncing plans to Supabase:', err);
+      console.warn('Error syncing plans to Supabase:', err);
     }
 
     setNewPlanName('');
