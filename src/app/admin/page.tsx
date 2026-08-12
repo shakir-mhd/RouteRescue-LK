@@ -432,6 +432,25 @@ export default function SuperAdminDashboard() {
     );
   };
 
+  const handleAssignTier = (id: number | string, newTierName: string) => {
+    const matchedPlan = plans.find((p) => p.name.toLowerCase() === newTierName.toLowerCase());
+    const updatedRadius = matchedPlan ? Number(matchedPlan.radius) : 5;
+    const updatedCap = matchedPlan ? Number(matchedPlan.maxCapacity || 3) : 3;
+
+    const updatedMechs = mechanics.map((m) => {
+      if (String(m.id) === String(id)) {
+        return {
+          ...m,
+          tier: newTierName,
+          radius: updatedRadius,
+          maxCapacity: updatedCap,
+        };
+      }
+      return m;
+    });
+    setMechanics(updatedMechs);
+  };
+
   const handleToggleTier = (id: number | string) => {
     setMechanics(
       mechanics.map((m) => {
@@ -611,9 +630,12 @@ export default function SuperAdminDashboard() {
   };
 
   const approvedMechanics = mechanics.filter((m) => m.status === 'Approved');
-  const basicCount = approvedMechanics.filter((m) => m.tier === 'Basic').length;
-  const premiumCount = approvedMechanics.filter((m) => m.tier === 'Premium Pro').length;
-  const totalMonthlyRevenue = basicCount * 1500 + premiumCount * 5000;
+  const basicCount = approvedMechanics.filter((m) => (m.tier || '').toLowerCase().includes('basic')).length;
+  const proCount = approvedMechanics.length - basicCount;
+  const totalMonthlyRevenue = approvedMechanics.reduce((sum, m) => {
+    const matchedPlan = plans.find((p) => p.name.toLowerCase() === String(m.tier).toLowerCase());
+    return sum + (matchedPlan ? Number(matchedPlan.price) : 2000);
+  }, 0);
 
   const pendingQueue = mechanics.filter((m) => m.status === 'Pending');
   const pendingLocationRequests = mechanics.filter((m) => Boolean(m.pendingLocation));
@@ -1477,7 +1499,7 @@ export default function SuperAdminDashboard() {
               <div className="glass-panel p-5 rounded-2xl border-slate-800">
                 <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Basic vs Pro Split</span>
                 <span className="text-xl font-extrabold text-amber-400 mt-1 block">
-                  {basicCount} Basic / {premiumCount} Pro
+                  {basicCount} Basic / {proCount} Premium & Pro
                 </span>
               </div>
               <div className="glass-panel p-5 rounded-2xl border-slate-800">
@@ -1496,16 +1518,24 @@ export default function SuperAdminDashboard() {
                   <div key={mech.id} className="bg-slate-900 p-4 rounded-xl border border-slate-850 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                     <div>
                       <div className="font-bold text-slate-100">{mech.businessName || mech.name}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">City: {mech.city} • Phone: {mech.phone} • Tier: <strong className="text-amber-400">{mech.tier}</strong></div>
+                      <div className="text-xs text-slate-400 mt-0.5">
+                        City: {mech.city} • Phone: {mech.phone} • Plan: <strong className="text-amber-400 font-extrabold">{mech.tier} ({mech.radius || 5}km • Max {mech.maxCapacity || 3} Jobs)</strong>
+                      </div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleToggleTier(mech.id)}
-                        className="py-1.5 px-3 bg-slate-950 border border-slate-800 text-slate-300 text-xs font-bold rounded-lg cursor-pointer hover:border-slate-700"
+                    <div className="flex items-center gap-2 w-full md:w-auto">
+                      <select
+                        value={mech.tier}
+                        onChange={(e) => handleAssignTier(mech.id, e.target.value)}
+                        className="py-1.5 px-3 bg-slate-950 border border-amber-500/40 text-amber-300 text-xs font-bold rounded-xl cursor-pointer hover:border-amber-400 focus:outline-none shadow-sm"
                       >
-                        Toggle Tier
-                      </button>
+                        {plans.map((p) => (
+                          <option key={p.id} value={p.name}>
+                            Tier: {p.name} ({p.radius}km)
+                          </option>
+                        ))}
+                      </select>
+
                       <button
                         onClick={() => handleDeleteMechanic(mech.id)}
                         className="py-1.5 px-3 bg-red-950/20 text-red-400 border border-red-500/20 text-xs font-bold rounded-lg cursor-pointer hover:bg-red-950/40"

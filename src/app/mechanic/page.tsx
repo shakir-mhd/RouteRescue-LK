@@ -1217,16 +1217,14 @@ export default function MechanicPortal() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h2 className="text-base font-extrabold text-slate-100">{currentMechanic.businessName || currentMechanic.name}</h2>
-                        {currentMechanic.tier === 'Premium Pro' ? (
-                          <span className="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1">
-                            <Star size={10} className="fill-amber-400 text-amber-400" />
-                            <span>PRO (25km • Max 5 Jobs)</span>
-                          </span>
-                        ) : (
-                          <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[9px] font-bold">
-                            Basic (5km • Max 3 Jobs)
-                          </span>
-                        )}
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 border uppercase ${
+                          (currentMechanic.tier || '').toLowerCase().includes('basic')
+                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                            : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                        }`}>
+                          {!(currentMechanic.tier || '').toLowerCase().includes('basic') && <Star size={10} className="fill-amber-400 text-amber-400" />}
+                          <span>{currentMechanic.tier || 'Standard'} ({currentMechanic.radius || 5}km • Max {currentMechanic.maxCapacity || 3} Jobs)</span>
+                        </span>
                       </div>
                       <p className="text-xs text-slate-400 mt-0.5">
                         Owner: <strong className="text-slate-200">{currentMechanic.name}</strong> • Phone: <strong className="text-slate-200">{currentMechanic.phone}</strong> • NIC: <strong className="text-slate-200">{currentMechanic.nic}</strong> • Staff: <strong className="text-emerald-400 font-extrabold">{currentMechanic.employees?.length || 0} Technicians</strong>
