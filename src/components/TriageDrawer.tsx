@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, AlertTriangle, BatteryCharging, ShieldAlert, Store, Navigation, Clock, CheckCircle2, Star } from 'lucide-react';
-import { useSharedState, DEFAULT_ADMIN_SETTINGS, AdminSettings } from '@/utils/store';
-import { getTierColorScheme } from './MapInner';
+import { useSharedState, DEFAULT_ADMIN_SETTINGS, AdminSettings, getTierColorScheme } from '@/utils/store';
 
 interface Mechanic {
   id: string | number;

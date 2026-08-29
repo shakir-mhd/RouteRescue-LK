@@ -84,6 +84,73 @@ export interface AdminSettings {
   perKmRate: number;
 }
 
+export interface TierColorScheme {
+  name: string;
+  pinBg: string;
+  hexColor: string;
+  ringFill: string;
+  ringStroke: string;
+  badgeBg: string;
+  badgeText: string;
+  badgeBorder: string;
+  iconSymbol: string;
+}
+
+export function getTierColorScheme(tierRaw?: string): TierColorScheme {
+  const tier = (tierRaw || 'Basic').toLowerCase().trim();
+
+  if (tier.includes('pro') || tier.includes('enterprise') || tier.includes('vip') || tier.includes('ultra')) {
+    return {
+      name: tierRaw || 'Premium Pro',
+      pinBg: 'bg-purple-600',
+      hexColor: '#a855f7',
+      ringFill: '#a855f71a',
+      ringStroke: '#a855f7',
+      badgeBg: 'bg-purple-500/20',
+      badgeText: 'text-purple-300',
+      badgeBorder: 'border-purple-500/40',
+      iconSymbol: '👑',
+    };
+  } else if (tier.includes('premium') || tier.includes('gold') || tier.includes('plus')) {
+    return {
+      name: tierRaw || 'Premium',
+      pinBg: 'bg-amber-500',
+      hexColor: '#f59e0b',
+      ringFill: '#f59e0b1a',
+      ringStroke: '#f59e0b',
+      badgeBg: 'bg-amber-500/20',
+      badgeText: 'text-amber-400',
+      badgeBorder: 'border-amber-500/40',
+      iconSymbol: '⭐',
+    };
+  } else if (tier.includes('starter') || tier.includes('silver') || tier.includes('standard')) {
+    return {
+      name: tierRaw || 'Standard',
+      pinBg: 'bg-cyan-500',
+      hexColor: '#06b6d4',
+      ringFill: '#06b6d41a',
+      ringStroke: '#06b6d4',
+      badgeBg: 'bg-cyan-500/20',
+      badgeText: 'text-cyan-300',
+      badgeBorder: 'border-cyan-500/40',
+      iconSymbol: '🛡️',
+    };
+  } else {
+    // Default Basic Tier
+    return {
+      name: tierRaw || 'Basic',
+      pinBg: 'bg-emerald-500',
+      hexColor: '#10b981',
+      ringFill: '#10b9811a',
+      ringStroke: '#10b981',
+      badgeBg: 'bg-emerald-500/20',
+      badgeText: 'text-emerald-400',
+      badgeBorder: 'border-emerald-500/40',
+      iconSymbol: '🔧',
+    };
+  }
+}
+
 export function getCancelledIncidentIds(): Set<string> {
   if (typeof window === 'undefined') return new Set();
   try {
