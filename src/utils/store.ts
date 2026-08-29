@@ -316,11 +316,11 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
           supabase.from('admin_settings').select('*').then(({ data }) => {
             if (data && data.length > 0) {
               supabase.from('admin_settings').update(payload).eq('id', data[0].id).then(({ error }) => {
-                if (error) console.error('Supabase admin_settings update error:', error);
+                if (error) console.warn('Supabase admin_settings update note:', error.message);
               });
             } else {
               supabase.from('admin_settings').insert([{ id: 1, ...payload }]).then(({ error }) => {
-                if (error) console.error('Supabase admin_settings insert error:', error);
+                if (error) console.warn('Supabase admin_settings insert note:', error.message);
               });
             }
           });

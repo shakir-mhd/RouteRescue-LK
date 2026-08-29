@@ -334,9 +334,12 @@ export default function MapInner({
       className="w-full h-full z-10"
       zoomControl={false}
     >
+      {/* High-Performance Watermark-Free Dark Map Tiles */}
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+        className="dark-tiles"
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &mdash; RouteRescue LK'
+        maxZoom={19}
       />
 
       <RecenterMap position={effectiveCenter} zoom={zoom} />
