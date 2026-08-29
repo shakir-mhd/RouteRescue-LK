@@ -47,8 +47,9 @@ interface MapInnerProps {
   zoom?: number;
 }
 
-const createUserIcon = () =>
-  L.divIcon({
+const createUserIcon = () => {
+  if (typeof window === 'undefined' || typeof L === 'undefined') return null as any;
+  return L.divIcon({
     className: 'custom-user-icon',
     html: `
       <div class="relative flex items-center justify-center h-10 w-10">
@@ -61,9 +62,11 @@ const createUserIcon = () =>
     iconSize: [40, 40],
     iconAnchor: [20, 20],
   });
+};
 
-const createReportIcon = () =>
-  L.divIcon({
+const createReportIcon = () => {
+  if (typeof window === 'undefined' || typeof L === 'undefined') return null as any;
+  return L.divIcon({
     className: 'custom-report-icon',
     html: `
       <div class="relative flex items-center justify-center h-10 w-10">
@@ -76,8 +79,10 @@ const createReportIcon = () =>
     iconSize: [40, 40],
     iconAnchor: [20, 20],
   });
+};
 
 const createIncidentIcon = (category: string) => {
+  if (typeof window === 'undefined' || typeof L === 'undefined') return null as any;
   const iconEmoji =
     category === 'Smoke/Overheating'
       ? '💨'
@@ -101,26 +106,94 @@ const createIncidentIcon = (category: string) => {
   });
 };
 
+export interface TierColorScheme {
+  name: string;
+  pinBg: string;
+  hexColor: string;
+  ringFill: string;
+  ringStroke: string;
+  badgeBg: string;
+  badgeText: string;
+  badgeBorder: string;
+  iconSymbol: string;
+}
+
+export function getTierColorScheme(tierRaw?: string): TierColorScheme {
+  const tier = (tierRaw || 'Basic').toLowerCase().trim();
+
+  if (tier.includes('pro') || tier.includes('enterprise') || tier.includes('vip') || tier.includes('ultra')) {
+    return {
+      name: tierRaw || 'Premium Pro',
+      pinBg: 'bg-purple-600',
+      hexColor: '#a855f7',
+      ringFill: '#a855f71a',
+      ringStroke: '#a855f7',
+      badgeBg: 'bg-purple-500/20',
+      badgeText: 'text-purple-300',
+      badgeBorder: 'border-purple-500/40',
+      iconSymbol: '👑',
+    };
+  } else if (tier.includes('premium') || tier.includes('gold') || tier.includes('plus')) {
+    return {
+      name: tierRaw || 'Premium',
+      pinBg: 'bg-amber-500',
+      hexColor: '#f59e0b',
+      ringFill: '#f59e0b1a',
+      ringStroke: '#f59e0b',
+      badgeBg: 'bg-amber-500/20',
+      badgeText: 'text-amber-400',
+      badgeBorder: 'border-amber-500/40',
+      iconSymbol: '⭐',
+    };
+  } else if (tier.includes('starter') || tier.includes('silver') || tier.includes('standard')) {
+    return {
+      name: tierRaw || 'Standard',
+      pinBg: 'bg-cyan-500',
+      hexColor: '#06b6d4',
+      ringFill: '#06b6d41a',
+      ringStroke: '#06b6d4',
+      badgeBg: 'bg-cyan-500/20',
+      badgeText: 'text-cyan-300',
+      badgeBorder: 'border-cyan-500/40',
+      iconSymbol: '🛡️',
+    };
+  } else {
+    // Default Basic Tier
+    return {
+      name: tierRaw || 'Basic',
+      pinBg: 'bg-emerald-500',
+      hexColor: '#10b981',
+      ringFill: '#10b9811a',
+      ringStroke: '#10b981',
+      badgeBg: 'bg-emerald-500/20',
+      badgeText: 'text-emerald-400',
+      badgeBorder: 'border-emerald-500/40',
+      iconSymbol: '🔧',
+    };
+  }
+}
+
 const createMechanicIcon = (tier: string) => {
-  const isPremium = tier === 'Premium Pro' || (tier as string) === 'premium';
-  const colorClass = isPremium ? 'bg-amber-500' : 'bg-emerald-500';
+  if (typeof window === 'undefined' || typeof L === 'undefined') return null as any;
+  const scheme = getTierColorScheme(tier);
   return L.divIcon({
     className: 'custom-mechanic-icon',
     html: `
-      <div class="relative flex items-center justify-center h-9 w-9">
-        <div class="absolute inset-0 bg-accent-green/20 rounded-full border border-accent-green/30 animate-pulse"></div>
-        <div class="relative flex items-center justify-center h-6 w-6 rounded-full ${colorClass} text-slate-950 shadow-md border border-slate-900 text-xs font-bold">
-          🛠️
+      <div class="relative flex items-center justify-center h-10 w-10">
+        <div class="absolute inset-0 rounded-full opacity-75 animate-ping" style="background-color: ${scheme.hexColor}25; border: 1px solid ${scheme.hexColor}60;"></div>
+        <div class="relative flex items-center justify-center h-8 w-8 rounded-full text-slate-950 shadow-xl border-2 border-slate-950 text-xs font-black" style="background-color: ${scheme.hexColor};">
+          ${scheme.iconSymbol}
         </div>
       </div>
     `,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
   });
 };
 
-const createRegionCenterIcon = () =>
-  L.divIcon({
+const createRegionCenterIcon = () => {
+  if (typeof window === 'undefined' || typeof L === 'undefined') return null as any;
+  return L.divIcon({
     className: 'custom-region-icon',
     html: `
       <div class="relative flex items-center justify-center h-10 w-10">
@@ -132,6 +205,7 @@ const createRegionCenterIcon = () =>
     iconSize: [40, 40],
     iconAnchor: [20, 20],
   });
+};
 
 function RecenterMap({ position, zoom }: { position: [number, number]; zoom: number }) {
   const map = useMap();
@@ -338,68 +412,81 @@ export default function MapInner({
         </React.Fragment>
       ))}
 
-      {/* Verified Mechanics - All Approved Garages Remain Permanently Visible */}
+      {/* Verified Mechanics - All Approved Garages Remain Permanently Visible with Tier-Colored Coverage Circles */}
       {mechanics.map((mech) => {
-        const maxCap = mech.maxCapacity || (mech.tier === 'Premium Pro' || (mech.tier as string) === 'premium' ? 5 : 3);
+        const scheme = getTierColorScheme(mech.tier);
+        const maxCap = Number(mech.maxCapacity) || 3;
         const activeJobsCount = mech.activeJobs || 0;
         const isFull = activeJobsCount >= maxCap;
+        const radiusMeters = (Number(mech.radius) || 5) * 1000;
 
         return (
-          <Marker key={mech.id} position={[mech.lat, mech.lng]} icon={createMechanicIcon(mech.tier)}>
-            <Popup>
-              <div className="text-xs p-2.5 text-slate-100 min-w-[220px] space-y-2">
-                <div className="flex items-center justify-between border-b border-slate-700/80 pb-1.5 gap-2">
-                  <div className="font-black text-emerald-400 text-xs sm:text-sm flex items-center gap-1">
-                    🏢 {mech.businessName || mech.name}
+          <React.Fragment key={mech.id}>
+            {/* Translucent Dispatch Radius Circle color-matched to tier */}
+            <Circle
+              center={[mech.lat, mech.lng]}
+              radius={radiusMeters}
+              pathOptions={{
+                color: scheme.ringStroke,
+                fillColor: scheme.hexColor,
+                fillOpacity: 0.08,
+                weight: 1.5,
+                dashArray: '5, 5',
+              }}
+            />
+
+            <Marker position={[mech.lat, mech.lng]} icon={createMechanicIcon(mech.tier)}>
+              <Popup>
+                <div className="text-xs p-2.5 text-slate-100 min-w-[220px] space-y-2">
+                  <div className="flex items-center justify-between border-b border-slate-700/80 pb-1.5 gap-2">
+                    <div className="font-black text-white text-xs sm:text-sm flex items-center gap-1">
+                      🏢 {mech.businessName || mech.name}
+                    </div>
+                    <span className={`text-[9px] px-2 py-0.5 rounded-full border font-black shrink-0 uppercase ${scheme.badgeBg} ${scheme.badgeText} ${scheme.badgeBorder}`}>
+                      {scheme.iconSymbol} {mech.tier || 'BASIC'} ({mech.radius || 5}km)
+                    </span>
                   </div>
-                  <span className={`text-[9px] px-2 py-0.5 rounded-full border font-black shrink-0 uppercase ${
-                    (mech.tier || '').toLowerCase().includes('pro') || (mech.tier || '').toLowerCase().includes('premium')
-                      ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
-                      : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                  }`}>
-                    {mech.tier || 'BASIC'} ({mech.radius || 5}km)
-                  </span>
-                </div>
 
-                <div className="space-y-1 bg-slate-950/80 p-2 rounded-xl border border-slate-800 text-[11px]">
-                  {mech.name && <div className="text-slate-300">Owner: <strong className="text-white">{mech.name}</strong></div>}
-                  {mech.phone && <div className="text-slate-300">Phone: <strong className="text-amber-400">{mech.phone}</strong></div>}
-                  {mech.nic && <div className="text-slate-300">NIC: <strong className="text-slate-200">{mech.nic}</strong></div>}
-                  {mech.city && <div className="text-slate-400 text-[10px]">District: <strong className="text-slate-300">{mech.city}</strong></div>}
-                </div>
+                  <div className="space-y-1 bg-slate-950/80 p-2 rounded-xl border border-slate-800 text-[11px]">
+                    {mech.name && <div className="text-slate-300">Owner: <strong className="text-white">{mech.name}</strong></div>}
+                    {mech.phone && <div className="text-slate-300">Phone: <strong className="text-amber-400">{mech.phone}</strong></div>}
+                    {mech.nic && <div className="text-slate-300">NIC: <strong className="text-slate-200">{mech.nic}</strong></div>}
+                    {mech.city && <div className="text-slate-400 text-[10px]">District: <strong className="text-slate-300">{mech.city}</strong></div>}
+                  </div>
 
-                <div className="text-[11px] font-bold">
-                  {mech.isOpen === false ? (
-                    <div className="text-red-400 bg-red-950/60 p-1.5 rounded-lg border border-red-500/40 flex items-center gap-1">
-                      <span>🔴 CLOSED / ON LEAVE (Off-Duty)</span>
+                  <div className="text-[11px] font-bold">
+                    {mech.isOpen === false ? (
+                      <div className="text-red-400 bg-red-950/60 p-1.5 rounded-lg border border-red-500/40 flex items-center gap-1">
+                        <span>🔴 CLOSED / ON LEAVE (Off-Duty)</span>
+                      </div>
+                    ) : isFull ? (
+                      <div className="text-amber-400 bg-amber-950/60 p-1.5 rounded-lg border border-amber-500/40 flex items-center justify-between">
+                        <span>🟡 Full Concurrent Capacity</span>
+                        <span className="font-mono text-[10px]">{activeJobsCount}/{maxCap} At Same Time</span>
+                      </div>
+                    ) : (
+                      <div className="text-emerald-400 bg-emerald-950/60 p-1.5 rounded-lg border border-emerald-500/40 flex items-center justify-between">
+                        <span>🟢 Ready for Dispatch</span>
+                        <span className="font-mono text-[10px]">{activeJobsCount}/{maxCap} At Same Time</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {mech.employees && (
+                    <div className="text-[10px] text-slate-400 font-medium">
+                      Staff: <strong className="text-emerald-400 font-black">{mech.employees.length || 1} Technicians</strong> on Roster
                     </div>
-                  ) : isFull ? (
-                    <div className="text-amber-400 bg-amber-950/60 p-1.5 rounded-lg border border-amber-500/40 flex items-center justify-between">
-                      <span>🟡 Full Concurrent Capacity</span>
-                      <span className="font-mono text-[10px]">{activeJobsCount}/{maxCap} At Same Time</span>
-                    </div>
-                  ) : (
-                    <div className="text-emerald-400 bg-emerald-950/60 p-1.5 rounded-lg border border-emerald-500/40 flex items-center justify-between">
-                      <span>🟢 Ready for Dispatch</span>
-                      <span className="font-mono text-[10px]">{activeJobsCount}/{maxCap} At Same Time</span>
+                  )}
+
+                  {mech.pendingLocation && (
+                    <div className="p-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold leading-tight">
+                      ⚠️ Location Update Requested: <span className="underline">{mech.pendingLocation.city}</span> (Pending Admin Review)
                     </div>
                   )}
                 </div>
-
-                {mech.employees && (
-                  <div className="text-[10px] text-slate-400 font-medium">
-                    Staff: <strong className="text-emerald-400 font-black">{mech.employees.length || 1} Technicians</strong> on Roster
-                  </div>
-                )}
-
-                {mech.pendingLocation && (
-                  <div className="p-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold leading-tight">
-                    ⚠️ Location Update Requested: <span className="underline">{mech.pendingLocation.city}</span> (Pending Admin Review)
-                  </div>
-                )}
-              </div>
-            </Popup>
-          </Marker>
+              </Popup>
+            </Marker>
+          </React.Fragment>
         );
       })}
     </MapContainer>

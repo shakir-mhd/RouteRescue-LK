@@ -240,7 +240,7 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             password: d.password,
           }));
           supabase.from('drivers').upsert(payload).then(({ error }) => {
-            if (error) console.error('Supabase drivers upsert error:', error);
+            if (error) console.warn('Supabase drivers upsert note:', error.message);
           });
         } else if (key === 'routerescue_mechanics' && Array.isArray(valueToStore)) {
           const payload = valueToStore.map((m: any) => ({
@@ -263,7 +263,7 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             pending_location: m.pendingLocation || m.pending_location || null,
           }));
           supabase.from('mechanics').upsert(payload).then(({ error }) => {
-            if (error) console.error('Supabase mechanics upsert error:', error);
+            if (error) console.warn('Supabase mechanics upsert note:', error.message);
           });
         } else if (key === 'routerescue_incidents' && Array.isArray(valueToStore)) {
           const payload = valueToStore.map((inc: any) => ({
@@ -284,7 +284,6 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
           }));
           supabase.from('incidents').upsert(payload).then(({ error }) => {
             if (error) {
-              console.error('Supabase incidents upsert error:', error);
               if (error.code === 'PGRST204') {
                 const fallbackPayload = valueToStore.map((inc: any) => ({
                   id: String(inc.id),
@@ -301,8 +300,10 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
                   assigned_employee: inc.assignedEmployee || inc.assigned_employee || null,
                 }));
                 supabase.from('incidents').upsert(fallbackPayload).then(({ error: fbErr }) => {
-                  if (fbErr) console.error('Supabase fallback incidents upsert error:', fbErr);
+                  if (fbErr) console.warn('Supabase fallback incidents upsert note:', fbErr.message);
                 });
+              } else {
+                console.warn('Supabase incidents upsert note:', error.message);
               }
             }
           });

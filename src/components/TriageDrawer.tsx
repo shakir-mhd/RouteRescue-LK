@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, AlertTriangle, BatteryCharging, ShieldAlert, Store, Navigation, Clock, CheckCircle2, Star } from 'lucide-react';
 import { useSharedState, DEFAULT_ADMIN_SETTINGS, AdminSettings } from '@/utils/store';
+import { getTierColorScheme } from './MapInner';
 
 interface Mechanic {
   id: string | number;
@@ -263,16 +264,14 @@ export default function TriageDrawer({
                                     <h4 className="text-xs font-black text-slate-100">
                                       {opt.garage.businessName || opt.garage.name}
                                     </h4>
-                                    {opt.garage.tier === 'Premium Pro' || (opt.garage.tier as string) === 'premium' ? (
-                                      <span className="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[8px] px-1.5 py-0.2 rounded-full font-bold flex items-center gap-0.5">
-                                        <Star size={8} className="fill-amber-400 text-amber-400" />
-                                        <span>PRO</span>
-                                      </span>
-                                    ) : (
-                                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[8px] px-1.5 py-0.2 rounded-full font-bold">
-                                        Basic
-                                      </span>
-                                    )}
+                                     {(() => {
+                                       const scheme = getTierColorScheme(opt.garage.tier);
+                                       return (
+                                         <span className={`text-[8px] px-1.5 py-0.2 rounded-full font-bold flex items-center gap-0.5 uppercase border ${scheme.badgeBg} ${scheme.badgeText} ${scheme.badgeBorder}`}>
+                                           <span>{scheme.iconSymbol} {opt.garage.tier || 'BASIC'}</span>
+                                         </span>
+                                       );
+                                     })()}
                                   </div>
                                   <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-0.5">
                                     <span className="flex items-center gap-0.5">
