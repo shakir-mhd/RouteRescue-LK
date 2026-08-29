@@ -361,18 +361,20 @@ export default function MapInner({
 
         return (
           <React.Fragment key={mech.id}>
-            {/* Translucent Dispatch Radius Circle color-matched to tier */}
-            <Circle
-              center={[mech.lat, mech.lng]}
-              radius={radiusMeters}
-              pathOptions={{
-                color: scheme.ringStroke,
-                fillColor: scheme.hexColor,
-                fillOpacity: 0.08,
-                weight: 1.5,
-                dashArray: '5, 5',
-              }}
-            />
+            {/* Translucent Dispatch Radius Circle color-matched to tier (Only shown when garage is OPEN) */}
+            {mech.isOpen !== false && (
+              <Circle
+                center={[mech.lat, mech.lng]}
+                radius={radiusMeters}
+                pathOptions={{
+                  color: scheme.ringStroke,
+                  fillColor: scheme.hexColor,
+                  fillOpacity: 0.08,
+                  weight: 1.5,
+                  dashArray: '5, 5',
+                }}
+              />
+            )}
 
             <Marker position={[mech.lat, mech.lng]} icon={createMechanicIcon(mech.tier)}>
               <Popup>

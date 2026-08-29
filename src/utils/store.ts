@@ -323,14 +323,27 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             radius: Number(m.radius) || 5,
             status: m.status || 'Pending',
             business_name: m.businessName || m.business_name || m.name,
-            is_available: typeof m.isAvailable === 'boolean' ? m.isAvailable : true,
+            is_available: m.isOpen !== false && (typeof m.isAvailable === 'boolean' ? m.isAvailable : true),
+            is_open: m.isOpen !== false,
             active_jobs: Number(m.activeJobs || m.active_jobs || 0),
             max_capacity: Number(m.maxCapacity || m.max_capacity || 3),
             employees: Array.isArray(m.employees) ? m.employees : [],
             pending_location: m.pendingLocation || m.pending_location || null,
           }));
           supabase.from('mechanics').upsert(payload).then(({ error }) => {
-            if (error) console.warn('Supabase mechanics upsert note:', error.message);
+            if (error) {
+              if (error.code === 'PGRST204' || (error.message && error.message.includes('is_open'))) {
+                const fallbackPayload = payload.map((item: any) => {
+                  const { is_open, ...rest } = item;
+                  return rest;
+                });
+                supabase.from('mechanics').upsert(fallbackPayload).then(({ error: fbErr }) => {
+                  if (fbErr) console.warn('Supabase fallback mechanics sync note:', fbErr.message);
+                });
+              } else {
+                console.warn('Supabase mechanics upsert note:', error.message);
+              }
+            }
           });
         } else if (key === 'routerescue_incidents' && Array.isArray(valueToStore)) {
           const payload = valueToStore.map((inc: any) => ({
@@ -466,6 +479,20 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             } catch (e) {}
 
             if (data) {
+              let currentLocalMechs: any[] = [];
+              try {
+                const localStr = window.localStorage.getItem(key);
+                if (localStr) currentLocalMechs = JSON.parse(localStr);
+              } catch (e) {}
+
+              const localOpenMap = new Map<string, boolean>();
+              currentLocalMechs.forEach((lm) => {
+                if (typeof lm.isOpen === 'boolean') {
+                  localOpenMap.set(String(lm.id), lm.isOpen);
+                  if (lm.phone) localOpenMap.set(String(lm.phone), lm.isOpen);
+                }
+              });
+
               const mapped = data.map((m: any) => {
                 const garageEmps = empList
                   .filter((e: any) => String(e.mechanic_id) === String(m.id))
@@ -478,6 +505,11 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
 
                 const fallbackEmps = Array.isArray(m.employees) ? m.employees : [];
                 const finalEmps = garageEmps.length > 0 ? garageEmps : fallbackEmps;
+
+                const isOpenPersisted =
+                  typeof m.is_open === 'boolean'
+                    ? m.is_open
+                    : (localOpenMap.get(String(m.id)) ?? localOpenMap.get(String(m.phone)) ?? (typeof m.is_available === 'boolean' ? m.is_available : true));
 
                 return {
                   id: m.id,
@@ -492,7 +524,8 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
                   radius: Number(m.radius),
                   status: m.status,
                   businessName: m.business_name || m.businessName || m.name,
-                  isAvailable: typeof m.is_available === 'boolean' ? m.is_available : true,
+                  isAvailable: typeof m.is_available === 'boolean' ? m.is_available : isOpenPersisted,
+                  isOpen: isOpenPersisted,
                   activeJobs: Number(m.active_jobs || m.activeJobs || 0),
                   maxCapacity: Number(m.max_capacity || m.maxCapacity || 3),
                   employees: finalEmps,

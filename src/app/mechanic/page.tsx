@@ -561,10 +561,10 @@ export default function MechanicPortal() {
   const handleToggleOperatingStatus = async () => {
     if (!currentMechanic) return;
     const newOpenState = currentMechanic.isOpen === false ? true : false;
-    const updatedMech = { ...currentMechanic, isOpen: newOpenState };
+    const updatedMech = { ...currentMechanic, isOpen: newOpenState, isAvailable: newOpenState };
 
     setCurrentMechanic(updatedMech);
-    setMechanics(mechanics.map((m) => (m.id === currentMechanic.id ? updatedMech : m)));
+    setMechanics(mechanics.map((m) => (String(m.id) === String(currentMechanic.id) ? updatedMech : m)));
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('mechanic_session', JSON.stringify(updatedMech));
@@ -572,12 +572,18 @@ export default function MechanicPortal() {
     }
 
     try {
-      await supabase
+      const { error } = await supabase
         .from('mechanics')
-        .update({ is_open: newOpenState })
+        .update({ is_open: newOpenState, is_available: newOpenState })
         .eq('id', String(currentMechanic.id));
+      if (error && (error.code === 'PGRST204' || error.message?.includes('is_open'))) {
+        await supabase
+          .from('mechanics')
+          .update({ is_available: newOpenState })
+          .eq('id', String(currentMechanic.id));
+      }
     } catch (err) {
-      console.error('Error toggling operating status in Supabase:', err);
+      console.warn('Error toggling operating status in Supabase:', err);
     }
   };
 
