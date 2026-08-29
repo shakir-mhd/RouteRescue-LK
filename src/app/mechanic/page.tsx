@@ -33,6 +33,7 @@ import {
 import dynamic from 'next/dynamic';
 import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs, SubscriptionPlan, DEFAULT_PLANS } from '@/utils/store';
 import { supabase } from '../../utils/supabase';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const GarageLocationPickerMap = dynamic(() => import('../../components/GarageLocationPickerInner'), {
   ssr: false,
@@ -898,16 +899,19 @@ export default function MechanicPortal() {
           </span>
         </div>
 
-        {currentMechanic ? (
-          <button
-            onClick={handleLogout}
-            className="text-xs text-red-400 hover:underline font-bold cursor-pointer"
-          >
-            Log Out
-          </button>
-        ) : (
-          <div className="w-16" />
-        )}
+        <div className="flex items-center gap-3">
+          <ThemeToggle compact={true} />
+          {currentMechanic ? (
+            <button
+              onClick={handleLogout}
+              className="text-xs text-red-400 hover:underline font-bold cursor-pointer"
+            >
+              Log Out
+            </button>
+          ) : (
+            <div className="w-4" />
+          )}
+        </div>
       </header>
 
       {/* Main Content Router */}

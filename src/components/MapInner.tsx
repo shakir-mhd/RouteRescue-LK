@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { getCancelledIncidentIds, getTierColorScheme, type TierColorScheme } from '../utils/store';
+import { useTheme } from '@/context/ThemeContext';
 
 export { type TierColorScheme, getTierColorScheme };
 
@@ -185,6 +186,8 @@ export default function MapInner({
   const audioCtxRef = useRef<AudioContext | null>(null);
   const userMarkerRef = useRef<any>(null);
 
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const effectiveCenter = mapCenter || userLocation;
 
   // Active hazards filtering
@@ -271,9 +274,10 @@ export default function MapInner({
       className="w-full h-full z-10"
       zoomControl={false}
     >
-      {/* High-Performance Watermark-Free Dark Map Tiles */}
+      {/* High-Performance Watermark-Free Adaptive Map Tiles (Dark / Light) */}
       <TileLayer
-        className="dark-tiles"
+        key={theme}
+        className={isDark ? 'dark-tiles' : 'light-tiles'}
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &mdash; RouteRescue LK'
         maxZoom={19}

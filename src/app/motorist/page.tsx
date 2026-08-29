@@ -9,6 +9,7 @@ import { supabase } from '../../utils/supabase';
 import MapDashboard from '../../components/MapDashboard';
 import TriageDrawer from '../../components/TriageDrawer';
 import LiveTracker from '../../components/LiveTracker';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const CITIES = SRI_LANKA_REGIONS.map((r) => ({
   name: r.name,
@@ -1011,6 +1012,7 @@ export default function MotoristPortal() {
             )}
 
             <div className="flex items-center gap-2">
+              <ThemeToggle compact={true} />
               <span className="text-[10px] font-black text-slate-200 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800 flex items-center gap-1.5 shadow-sm">
                 <span className="text-orange-400">👤</span>
                 <span>{driverName}</span>

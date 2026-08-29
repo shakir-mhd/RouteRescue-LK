@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
+import { ThemeProvider } from "@/context/ThemeContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -47,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full scroll-smooth dark">
+    <html lang="en" className="h-full scroll-smooth dark" suppressHydrationWarning>
       <head>
         <link
           rel="stylesheet"
@@ -58,12 +59,22 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              try {
+                const t = localStorage.getItem('routerescue_theme');
+                if (t === 'light') {
+                  document.documentElement.classList.remove('dark');
+                  document.documentElement.classList.add('light');
+                } else {
+                  document.documentElement.classList.remove('light');
+                  document.documentElement.classList.add('dark');
+                }
+              } catch (e) {}
+
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js');
                 });
 
-                // Automatically reload the page when a new service worker version activates
                 let refreshing = false;
                 navigator.serviceWorker.addEventListener('controllerchange', function() {
                   if (!refreshing) {
@@ -76,11 +87,13 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${geistSans.className} bg-slate-950 text-slate-100 min-h-full flex flex-col antialiased`}>
-        <PWAInstallBanner />
-        {children}
-        <Analytics />
-        <SpeedInsights />
+      <body className={`${geistSans.className} bg-slate-950 dark:bg-slate-950 text-slate-100 dark:text-slate-100 min-h-full flex flex-col antialiased transition-colors duration-300`}>
+        <ThemeProvider>
+          <PWAInstallBanner />
+          {children}
+          <Analytics />
+          <SpeedInsights />
+        </ThemeProvider>
       </body>
     </html>
   );

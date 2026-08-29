@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion as framerMotion, AnimatePresence } from 'framer-motion';
 import { ShieldAlert, Key, X, Info } from 'lucide-react';
 import { useSharedState, AdminSettings, DEFAULT_ADMIN_SETTINGS } from '@/utils/store';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function LandingPage() {
   const router = useRouter();
@@ -29,7 +30,11 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col justify-between px-4 py-8 relative overflow-hidden select-none">
+    <div className="min-h-screen w-full bg-slate-950 dark:bg-slate-950 text-slate-100 flex flex-col justify-between px-4 py-8 relative overflow-hidden select-none">
+      {/* Top Floating Theme Switcher */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-30">
+        <ThemeToggle compact={false} />
+      </div>
       {/* Decorative premium background elements */}
       <div className="absolute top-[-10%] left-[-10%] h-96 w-96 rounded-full bg-accent-orange/5 blur-3xl -z-10" />
       <div className="absolute bottom-[-10%] right-[-10%] h-96 w-96 rounded-full bg-amber-500/5 blur-3xl -z-10" />

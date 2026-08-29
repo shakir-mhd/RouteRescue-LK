@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useTheme } from '@/context/ThemeContext';
 
 interface GarageLocationPickerProps {
   location: [number, number];
@@ -48,6 +49,8 @@ function MapClickHandler({ onLocationChange }: { onLocationChange: (lat: number,
 
 export default function GarageLocationPickerInner({ location, onLocationChange }: GarageLocationPickerProps) {
   const markerRef = useRef<any>(null);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   const eventHandlers = useMemo(
     () => ({
@@ -72,7 +75,8 @@ export default function GarageLocationPickerInner({ location, onLocationChange }
         zoomControl={false}
       >
         <TileLayer
-          className="dark-tiles"
+          key={theme}
+          className={isDark ? 'dark-tiles' : 'light-tiles'}
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           maxZoom={19}
