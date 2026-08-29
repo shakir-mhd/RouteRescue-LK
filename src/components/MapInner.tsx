@@ -15,6 +15,7 @@ interface Incident {
   status: string;
   baseTariff: number;
   timestamp: string;
+  mechanicId?: string | number;
 }
 
 interface Mechanic {
@@ -355,7 +356,10 @@ export default function MapInner({
       {mechanics.map((mech) => {
         const scheme = getTierColorScheme(mech.tier);
         const maxCap = Number(mech.maxCapacity) || 3;
-        const activeJobsCount = mech.activeJobs || 0;
+        const activeDispatches = activeIncidents.filter(
+          (i) => String(i.mechanicId) === String(mech.id) && i.status !== 'Request Sent'
+        );
+        const activeJobsCount = activeDispatches.length;
         const isFull = activeJobsCount >= maxCap;
         const radiusMeters = (Number(mech.radius) || 5) * 1000;
 
