@@ -3,7 +3,9 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { getCancelledIncidentIds } from '../utils/store';
+import { getCancelledIncidentIds, getTierColorScheme, type TierColorScheme } from '../utils/store';
+
+export { type TierColorScheme, getTierColorScheme };
 
 interface Incident {
   id: string;
@@ -106,7 +108,6 @@ const createIncidentIcon = (category: string) => {
   });
 };
 
-export { type TierColorScheme, getTierColorScheme } from '../utils/store';
 
 const createMechanicIcon = (tier: string) => {
   if (typeof window === 'undefined' || typeof L === 'undefined') return null as any;
