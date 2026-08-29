@@ -103,10 +103,7 @@ export default function TriageDrawer({
     const options: NearbyOption[] = [];
 
     mechanics.forEach((mech) => {
-      if (mech.isOpen === false) return; // Closed / On Leave garages cannot accept emergency calls
-      const maxCap = Number(mech.maxCapacity) || 3;
-      const activeJobsCount = mech.activeJobs || 0;
-      if (activeJobsCount >= maxCap) return;
+      if (mech.isOpen === false) return; // Only skip if the garage owner explicitly switched status to CLOSED
 
       const d = getDistanceInKm(reportLocation[0], reportLocation[1], mech.lat, mech.lng);
       const maxRadius = Number(mech.radius) || 5;
