@@ -589,7 +589,7 @@ export default function MechanicPortal() {
 
   const handleDispatchEmployee = async (incidentId: string) => {
     if (!currentMechanic) return;
-    const targetInc = incidents.find((i) => i.id === incidentId);
+    const targetInc = incidents.find((i) => String(i.id) === String(incidentId));
     if (!targetInc || targetInc.status !== 'Request Sent') {
       alert('⚠️ Booking Already Claimed!\n\nAnother nearby garage clicked and accepted this emergency request first.');
       return;
@@ -600,7 +600,7 @@ export default function MechanicPortal() {
 
     const updatedIncident: Incident = {
       ...targetInc,
-      status: 'Mechanic Assigned',
+      status: 'Mechanic En Route',
       mechanicId: currentMechanic.id,
       assignedEmployee: matchedEmp ? { id: matchedEmp.id, name: matchedEmp.name, phone: matchedEmp.phone, role: matchedEmp.role } : undefined,
     };
@@ -610,22 +610,55 @@ export default function MechanicPortal() {
     const isStillAvailable = updatedActiveJobs < maxCap;
     const updatedMech = { ...currentMechanic, activeJobs: updatedActiveJobs, isAvailable: isStillAvailable, maxCapacity: maxCap };
 
-    setIncidents(incidents.map((i) => (i.id === incidentId ? updatedIncident : i)));
+    setIncidents(incidents.map((i) => (String(i.id) === String(incidentId) ? updatedIncident : i)));
     setCurrentMechanic(updatedMech);
-    setMechanics(mechanics.map((m) => (m.id === currentMechanic.id ? updatedMech : m)));
+    setMechanics(mechanics.map((m) => (String(m.id) === String(currentMechanic.id) ? updatedMech : m)));
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('routerescue_active_incident', JSON.stringify(updatedIncident));
+      localStorage.setItem('mechanic_session', JSON.stringify(updatedMech));
       window.dispatchEvent(new Event('local-storage-sync'));
     }
 
     try {
+      // 1. Direct Supabase update for incident status & assignment
+      await supabase
+        .from('incidents')
+        .update({
+          status: 'Mechanic En Route',
+          mechanic_id: String(currentMechanic.id),
+          assigned_employee: matchedEmp ? { id: matchedEmp.id, name: matchedEmp.name, phone: matchedEmp.phone, role: matchedEmp.role } : null,
+        })
+        .eq('id', String(incidentId));
+
+      const payload = {
+        id: String(updatedIncident.id),
+        category: updatedIncident.category,
+        lat: Number(updatedIncident.lat),
+        lng: Number(updatedIncident.lng),
+        status: 'Mechanic En Route',
+        base_tariff: Number(updatedIncident.baseTariff || 1000),
+        timestamp: updatedIncident.timestamp || new Date().toISOString(),
+        mechanic_id: String(currentMechanic.id),
+        distance_km: Number(updatedIncident.distanceKm || 0),
+        driver_name: updatedIncident.driverName || 'Anonymous Motorist',
+        driver_phone: updatedIncident.driverPhone || '',
+        assigned_employee: matchedEmp ? { id: matchedEmp.id, name: matchedEmp.name, phone: matchedEmp.phone, role: matchedEmp.role } : null,
+      };
+
+      const { error: incErr } = await supabase.from('incidents').upsert([payload]);
+      if (incErr && incErr.code === 'PGRST204') {
+        const { assigned_employee, ...fallbackPayload } = payload;
+        await supabase.from('incidents').upsert([fallbackPayload]);
+      }
+
+      // 2. Update garage active jobs and capacity in Supabase
       await supabase
         .from('mechanics')
         .update({ active_jobs: updatedActiveJobs, is_available: isStillAvailable, max_capacity: maxCap })
         .eq('id', String(currentMechanic.id));
     } catch (err) {
-      console.error('Error updating mechanic dispatch capacity:', err);
+      console.error('Error updating mechanic dispatch capacity and incident in Supabase:', err);
     }
 
     if (matchedEmp) {

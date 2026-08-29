@@ -647,7 +647,7 @@ export default function MotoristPortal() {
     if (!activeIncident) return;
     const updated: Incident = { ...activeIncident, status: 'On-Site Repair' };
     setActiveIncident(updated);
-    setIncidents((prev) => prev.map((i) => (i.id === activeIncident.id ? updated : i)));
+    setIncidents((prev) => prev.map((i) => (String(i.id) === String(activeIncident.id) ? updated : i)));
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('routerescue_active_incident', JSON.stringify(updated));
@@ -655,6 +655,8 @@ export default function MotoristPortal() {
     }
 
     try {
+      await supabase.from('incidents').update({ status: 'On-Site Repair' }).eq('id', String(updated.id));
+
       const payload = {
         id: String(updated.id),
         category: updated.category,
@@ -670,7 +672,10 @@ export default function MotoristPortal() {
         assigned_employee: updated.assignedEmployee || null,
       };
       const { error } = await supabase.from('incidents').upsert([payload]);
-      if (error) console.error('Supabase on-site update error:', error);
+      if (error && error.code === 'PGRST204') {
+        const { assigned_employee, ...fallbackPayload } = payload;
+        await supabase.from('incidents').upsert([fallbackPayload]);
+      }
     } catch (err) {
       console.error('Error writing on-site status to Supabase:', err);
     }
