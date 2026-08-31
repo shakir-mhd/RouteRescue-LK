@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     }
 
     const gmailUser = process.env.GMAIL_USER || 'routerescuelk@gmail.com';
-    const gmailPass = process.env.GMAIL_APP_PASSWORD || '';
+    const gmailPass = process.env.GMAIL_APP_PASSWORD || 'blfm gqvq rmvm qnwx';
 
     if (!gmailPass) {
       console.log(`[SECURITY EMAIL SIMULATED] To: ${toEmail} | Code: ${otpCode}`);
