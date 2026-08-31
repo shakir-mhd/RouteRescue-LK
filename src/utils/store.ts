@@ -199,9 +199,9 @@ export interface SubscriptionPlan {
 }
 
 export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
-  passcode: '1234',
+  passcode: '2004',
   flatRate: 1000,
-  perKmRate: 150,
+  perKmRate: 200,
 };
 
 export const DEFAULT_PLANS: SubscriptionPlan[] = [
