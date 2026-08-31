@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -153,12 +153,14 @@ export default function SuperAdminDashboard() {
   const [perKmRate, setPerKmRate] = useState<number | string>('');
   const [settingsMessage, setSettingsMessage] = useState('');
 
-  // Sync settings dynamically from database when adminSettings loads
+  // Sync settings dynamically from database when adminSettings loads initial values
+  const hasInitializedSettingsRef = useRef(false);
   useEffect(() => {
-    if (adminSettings) {
+    if (adminSettings && !hasInitializedSettingsRef.current) {
       setNewPasscode(adminSettings.passcode ?? '');
       setFlatRate(adminSettings.flatRate !== undefined ? adminSettings.flatRate : '');
       setPerKmRate(adminSettings.perKmRate !== undefined ? adminSettings.perKmRate : '');
+      hasInitializedSettingsRef.current = true;
     }
   }, [adminSettings]);
 
