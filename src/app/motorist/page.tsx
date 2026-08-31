@@ -9,6 +9,7 @@ import { supabase } from '../../utils/supabase';
 import MapDashboard from '../../components/MapDashboard';
 import TriageDrawer from '../../components/TriageDrawer';
 import LiveTracker from '../../components/LiveTracker';
+import MechanicRobotChat from '../../components/MechanicRobotChat';
 
 const CITIES = SRI_LANKA_REGIONS.map((r) => ({
   name: r.name,
@@ -1135,6 +1136,7 @@ export default function MotoristPortal() {
         </nav>
         </>
       )}
+      <MechanicRobotChat userRole="driver" />
     </div>
   );
 }

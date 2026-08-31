@@ -12,6 +12,7 @@ import {
 import { useSharedState, Incident, Mechanic, SEED_MECHANICS, DEFAULT_ADMIN_SETTINGS, AdminSettings, SubscriptionPlan, DEFAULT_PLANS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs } from '../../utils/store';
 import { supabase } from '../../utils/supabase';
 import dynamic from 'next/dynamic';
+import MechanicRobotChat from '../../components/MechanicRobotChat';
 
 const MapInner = dynamic(() => import('../../components/MapInner'), {
   ssr: false,
@@ -2206,6 +2207,7 @@ export default function SuperAdminDashboard() {
           </>
         )}
       </AnimatePresence>
+      <MechanicRobotChat userRole="admin" />
     </div>
   );
 }

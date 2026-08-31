@@ -33,6 +33,7 @@ import {
 import dynamic from 'next/dynamic';
 import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs, SubscriptionPlan, DEFAULT_PLANS } from '@/utils/store';
 import { supabase } from '../../utils/supabase';
+import MechanicRobotChat from '../../components/MechanicRobotChat';
 
 const GarageLocationPickerMap = dynamic(() => import('../../components/GarageLocationPickerInner'), {
   ssr: false,
@@ -2233,6 +2234,7 @@ export default function MechanicPortal() {
           </div>
         </div>
       )}
+      <MechanicRobotChat userRole="mechanic" />
     </div>
   );
 }
