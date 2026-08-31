@@ -12,23 +12,12 @@
   --foreground: #f8fafc;
 }
 
-html.light {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-}
-
-html.dark {
-  --background: #060913;
-  --foreground: #f8fafc;
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Glassmorphism helpers - Dark Mode (Default) */
+/* Glassmorphism helpers */
 .glass-panel {
   background: rgba(15, 23, 42, 0.75);
   backdrop-filter: blur(14px);
@@ -43,23 +32,6 @@ body {
   -webkit-backdrop-filter: blur(18px);
   border: 1px solid rgba(255, 87, 34, 0.25);
   transition: background 0.3s ease, border-color 0.3s ease;
-}
-
-/* Glassmorphism helpers - Light Mode */
-html.light .glass-panel {
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
-}
-
-html.light .glass-panel-heavy {
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(249, 115, 22, 0.35);
-  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1);
 }
 
 /* Radar Pulse Animations for safety radius markers */
@@ -120,21 +92,11 @@ html.light .glass-panel-heavy {
   width: 100%;
   height: 100%;
   background-color: #0b0f19 !important;
-  transition: background-color 0.3s ease;
-}
-
-html.light .leaflet-container {
-  background-color: #e2e8f0 !important;
 }
 
 /* Tactical Dark Tile Filter for Night Mode */
 .dark-tiles .leaflet-tile {
   filter: brightness(0.6) invert(1) contrast(2.8) hue-rotate(200deg) saturate(0.18) brightness(0.55);
-}
-
-/* Crisp Clean Natural Tiles for Light Mode */
-.light-tiles .leaflet-tile {
-  filter: saturate(1.1) contrast(1.05);
 }
 
 .leaflet-bar {
@@ -151,12 +113,6 @@ html.light .leaflet-container {
   transition: all 0.2s ease-in-out;
 }
 
-html.light .leaflet-bar a {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  color: #0f172a !important;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
-}
-
 .leaflet-bar a:hover {
   background-color: #ff5722 !important;
   color: #ffffff !important;
@@ -171,20 +127,8 @@ html.light .leaflet-bar a {
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
 }
 
-html.light .leaflet-popup-content-wrapper {
-  background: rgba(255, 255, 255, 0.96) !important;
-  backdrop-filter: blur(12px);
-  color: #0f172a !important;
-  border: 1px solid rgba(203, 213, 225, 0.8);
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.18) !important;
-}
-
 .leaflet-popup-tip {
   background: rgba(15, 23, 42, 0.95) !important;
-}
-
-html.light .leaflet-popup-tip {
-  background: rgba(255, 255, 255, 0.96) !important;
 }
 
 /* Hide default leaflet attribution for clean UI */

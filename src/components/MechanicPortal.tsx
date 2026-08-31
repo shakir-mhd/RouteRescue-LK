@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import { Wrench, ShieldCheck, Check, Info, Radio, Star } from 'lucide-react';
 
 interface Incident {

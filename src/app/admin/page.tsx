@@ -12,7 +12,6 @@ import {
 import { useSharedState, Incident, Mechanic, SEED_MECHANICS, DEFAULT_ADMIN_SETTINGS, AdminSettings, SubscriptionPlan, DEFAULT_PLANS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs } from '../../utils/store';
 import { supabase } from '../../utils/supabase';
 import dynamic from 'next/dynamic';
-import ThemeToggle from '@/components/ThemeToggle';
 
 const MapInner = dynamic(() => import('../../components/MapInner'), {
   ssr: false,
@@ -805,7 +804,6 @@ export default function SuperAdminDashboard() {
               Super Admin Control Center
             </span>
           </div>
-          <ThemeToggle compact={true} />
           <button
             onClick={handleAdminLogout}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-extrabold transition-all cursor-pointer"
