@@ -1424,6 +1424,7 @@ export default function SuperAdminDashboard() {
                       <div className="mt-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-1 text-xs">
                         <div className="text-slate-300">NIC: <strong className="text-accent-yellow">{vendor.nic || 'Not Provided'}</strong></div>
                         <div className="text-slate-400">Phone: <strong>{vendor.phone}</strong></div>
+                        <div className="text-slate-400">Email: <strong className="text-emerald-400">{vendor.email || `${(vendor.businessName || vendor.name).toLowerCase().replace(/[^a-z0-9]/g, '')}@routerescue.lk`}</strong></div>
                         <div className="text-slate-400">City: <strong>{vendor.city}</strong></div>
                         <div className="text-slate-400 font-mono text-[10px] pt-1">
                           GPS: <strong className="text-cyan-400">{vendor.lat ? vendor.lat.toFixed(5) : '6.9271'}, {vendor.lng ? vendor.lng.toFixed(5) : '79.8612'}</strong>
@@ -2085,6 +2086,10 @@ export default function SuperAdminDashboard() {
                 <div className="flex justify-between border-b border-slate-850 pb-1.5">
                   <span className="text-slate-400">Phone Number</span>
                   <span className="font-bold text-slate-200">{selectedMechanicModal.phone}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-850 pb-1.5">
+                  <span className="text-slate-400">Email Address</span>
+                  <span className="font-bold text-emerald-400">{selectedMechanicModal.email || `${(selectedMechanicModal.businessName || selectedMechanicModal.name).toLowerCase().replace(/[^a-z0-9]/g, '')}@routerescue.lk`}</span>
                 </div>
                 <div className="flex justify-between border-b border-slate-850 pb-1.5">
                   <span className="text-slate-400">NIC Credential</span>
