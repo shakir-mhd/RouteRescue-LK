@@ -19,6 +19,7 @@ import {
   Bell,
   Lock,
   Smartphone,
+  Mail,
   X,
   AlertTriangle,
   MapPin,
@@ -66,6 +67,7 @@ interface Mechanic {
   tier: string;
   radius: number;
   phone: string;
+  email?: string;
   nic: string;
   password?: string;
   status: 'Pending' | 'Approved' | 'Rejected' | 'Blocked' | 'Revoked';
@@ -116,6 +118,7 @@ export default function MechanicPortal() {
   const [name, setName] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [nic, setNic] = useState('');
   const [password, setPassword] = useState('');
   const [city, setCity] = useState('Colombo');
@@ -361,14 +364,19 @@ export default function MechanicPortal() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-    const matched = mechanics.find((m) => m.phone === loginPhone);
+    const cleanInput = loginPhone.trim().toLowerCase();
+    const matched = mechanics.find(
+      (m) =>
+        m.phone === cleanInput ||
+        (m.email && m.email.trim().toLowerCase() === cleanInput)
+    );
     if (matched) {
       setCurrentMechanic(matched);
       if (typeof window !== 'undefined') {
         localStorage.setItem('mechanic_session', JSON.stringify(matched));
       }
     } else {
-      setFormError('Garage mobile number not registered. Please register your garage account below.');
+      setFormError('Garage mobile number or email address not registered. Please register your garage account below.');
     }
   };
 
@@ -390,6 +398,8 @@ export default function MechanicPortal() {
     const mechRadius = matchedPlan ? Number(matchedPlan.radius) : 5;
     const mechMaxCap = matchedPlan ? Number(matchedPlan.maxCapacity || 3) : 3;
 
+    const garageEmail = email.trim() || `${businessName.toLowerCase().replace(/[^a-z0-9]/g, '')}@routerescue.lk`;
+
     const newMech: Mechanic = {
       id: `mech-${Date.now()}`,
       name,
@@ -400,6 +410,7 @@ export default function MechanicPortal() {
       tier: matchedPlan ? matchedPlan.name : tier,
       radius: mechRadius,
       phone,
+      email: garageEmail,
       nic,
       password,
       status: 'Pending',
@@ -424,6 +435,7 @@ export default function MechanicPortal() {
         id: String(newMech.id),
         name: newMech.name,
         phone: newMech.phone,
+        email: newMech.email,
         nic: newMech.nic,
         password: newMech.password,
         city: newMech.city,
@@ -1085,14 +1097,14 @@ export default function MechanicPortal() {
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
-                    Registered Mobile Number
+                    Registered Mobile Number or Email Address
                   </label>
                   <input
-                    type="tel"
+                    type="text"
                     value={loginPhone}
                     onChange={(e) => setLoginPhone(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
-                    placeholder="e.g. 0771234567"
+                    placeholder="e.g. 0771234567 or perera.motors@gmail.com"
                     required
                   />
                 </div>
@@ -1157,6 +1169,20 @@ export default function MechanicPortal() {
                     onChange={(e) => setBusinessName(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
                     placeholder="Perera Motors & Towing"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                    Garage Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-accent-green"
+                    placeholder="pereramotors@gmail.com"
                     required
                   />
                 </div>
@@ -1954,19 +1980,22 @@ export default function MechanicPortal() {
                 </form>
 
                 <div className="border-t border-slate-800 pt-5 max-w-md">
-                  <h4 className="text-xs font-bold text-slate-200 mb-1">Mobile OTP Verification Reset</h4>
+                  <h4 className="text-xs font-bold text-slate-200 mb-1 flex items-center gap-2">
+                    <Mail size={14} className="text-emerald-400" />
+                    <span>Email Security Verification Reset</span>
+                  </h4>
                   <p className="text-xs text-slate-400 mb-3">
-                    Re-verify registered mobile number ({currentMechanic.phone}) via SMS verification code.
+                    Re-verify registered garage email address (<strong className="text-slate-200">{currentMechanic.email || `${(currentMechanic.businessName || currentMechanic.name).toLowerCase().replace(/[^a-z0-9]/g, '')}@routerescue.lk`}</strong>) via Email Verification Code.
                   </p>
                   <button
                     onClick={() => {
                       setOtpModalOpen(true);
                       handleSendMobileOtp();
                     }}
-                    className="py-2.5 px-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 font-bold text-xs flex items-center gap-2 cursor-pointer"
+                    className="py-2.5 px-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 text-emerald-400 font-bold text-xs flex items-center gap-2 cursor-pointer shadow-md"
                   >
-                    <Smartphone size={14} />
-                    <span>Send Mobile Security OTP</span>
+                    <Mail size={14} className="text-emerald-400" />
+                    <span>Send Email Security Verification OTP</span>
                   </button>
                 </div>
 
@@ -2200,13 +2229,16 @@ export default function MechanicPortal() {
         </div>
       )}
 
-      {/* Mobile Security OTP Modal */}
+      {/* Email Security Verification OTP Modal */}
       {otpModalOpen && (
         <div className="fixed inset-0 bg-slate-950/80 z-[1300] flex items-center justify-center p-4">
           <div className="glass-panel p-5 rounded-2xl max-w-sm w-full border-slate-800 space-y-3">
-            <div className="text-xs font-bold text-slate-200">Mobile Security OTP Verification</div>
+            <div className="text-xs font-bold text-slate-200 flex items-center gap-2">
+              <Mail size={16} className="text-emerald-400" />
+              <span>Email Security Verification</span>
+            </div>
             <p className="text-[11px] text-slate-400">
-              Enter the 4-digit security code sent to {currentMechanic?.phone} (Simulated OTP: <strong>1234</strong>).
+              Enter the security verification code sent to <strong className="text-slate-200">{currentMechanic?.email || currentMechanic?.phone}</strong> (Verification Code: <strong className="text-emerald-400">1234</strong>).
             </p>
 
             <input
@@ -2214,7 +2246,7 @@ export default function MechanicPortal() {
               maxLength={4}
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value)}
-              className="w-full px-3 py-2 text-center text-lg font-mono tracking-widest rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:outline-none"
+              className="w-full px-3 py-2 text-center text-lg font-mono tracking-widest rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:outline-none focus:border-emerald-500"
               placeholder="1234"
             />
 
@@ -2222,16 +2254,16 @@ export default function MechanicPortal() {
               <button
                 type="button"
                 onClick={() => setOtpModalOpen(false)}
-                className="flex-1 py-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-300 text-xs font-bold"
+                className="flex-1 py-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-300 text-xs font-bold cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleVerifyMobileOtp}
-                className="flex-1 py-2 rounded-xl bg-accent-green text-slate-950 text-xs font-bold"
+                className="flex-1 py-2 rounded-xl bg-accent-green text-slate-950 text-xs font-bold cursor-pointer"
               >
-                Verify Code
+                Verify Email Code
               </button>
             </div>
           </div>

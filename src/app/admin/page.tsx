@@ -111,6 +111,7 @@ export default function SuperAdminDashboard() {
             id: String(m.id),
             name: String(m.name || ''),
             phone: String(m.phone || ''),
+            email: String(m.email || ''),
             nic: String(m.nic || ''),
             password: String(m.password || ''),
             city: String(m.city || 'Colombo'),

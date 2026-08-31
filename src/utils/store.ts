@@ -37,6 +37,7 @@ export interface Mechanic {
   tier: string;
   radius: number;
   phone: string;
+  email?: string;
   status: 'Approved' | 'Pending' | 'Rejected' | 'Blocked' | 'Revoked';
   businessName: string;
   nic: string;
@@ -314,6 +315,7 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
             id: String(m.id),
             name: m.name,
             phone: m.phone,
+            email: m.email || '',
             nic: m.nic || '',
             password: m.password || '',
             city: m.city || 'Colombo',
@@ -515,6 +517,7 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
                   id: m.id,
                   name: m.name,
                   phone: m.phone,
+                  email: m.email || '',
                   nic: m.nic,
                   password: m.password,
                   city: m.city,
