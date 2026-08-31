@@ -295,6 +295,9 @@ export default function MechanicPortal() {
               }
             }
             merged.sort((a, b) => parseTimestampMs(b.timestamp) - parseTimestampMs(a.timestamp));
+            if (JSON.stringify(prevIncidents) === JSON.stringify(merged)) {
+              return prevIncidents;
+            }
             return merged;
           });
         }
@@ -304,7 +307,7 @@ export default function MechanicPortal() {
     }
 
     syncIncidentsFromSupabase();
-    const interval = setInterval(syncIncidentsFromSupabase, 2500);
+    const interval = setInterval(syncIncidentsFromSupabase, 3500);
     return () => {
       isMounted = false;
       clearInterval(interval);

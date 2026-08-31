@@ -97,6 +97,9 @@ export default function SuperAdminDashboard() {
               }
             }
             merged.sort((a, b) => parseTimestampMs(b.timestamp) - parseTimestampMs(a.timestamp));
+            if (JSON.stringify(prevIncidents) === JSON.stringify(merged)) {
+              return prevIncidents;
+            }
             return merged;
           });
         }
@@ -124,7 +127,13 @@ export default function SuperAdminDashboard() {
             employees: Array.isArray(m.employees) ? m.employees : [],
             pendingLocation: m.pending_location || m.pendingLocation || undefined,
           }));
-          setMechanics(formattedMechs);
+          
+          setMechanics((prevMechs) => {
+            if (JSON.stringify(prevMechs) === JSON.stringify(formattedMechs)) {
+              return prevMechs;
+            }
+            return formattedMechs;
+          });
         }
       } catch (err) {
         console.error('Real-time admin heartbeat error:', err);
@@ -132,7 +141,7 @@ export default function SuperAdminDashboard() {
     }
 
     syncFromSupabase();
-    const interval = setInterval(syncFromSupabase, 2500);
+    const interval = setInterval(syncFromSupabase, 3500);
     return () => {
       isMounted = false;
       clearInterval(interval);
