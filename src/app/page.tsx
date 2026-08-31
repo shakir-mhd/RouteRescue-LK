@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion as framerMotion, AnimatePresence } from 'framer-motion';
 import { ShieldAlert, Key, X, Info } from 'lucide-react';
 import { useSharedState, AdminSettings, DEFAULT_ADMIN_SETTINGS } from '@/utils/store';
+import MechanicRobotChat from '@/components/MechanicRobotChat';
 
 export default function LandingPage() {
   const router = useRouter();
@@ -214,6 +215,7 @@ export default function LandingPage() {
           </>
         )}
       </AnimatePresence>
+      <MechanicRobotChat userRole="driver" />
     </div>
   );
 }
