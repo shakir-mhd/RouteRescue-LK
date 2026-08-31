@@ -1693,15 +1693,15 @@ export default function SuperAdminDashboard() {
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="glass-panel p-5 rounded-2xl border-slate-800">
-                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Approved Garages</span>
-                <span className="text-xl font-extrabold text-slate-100 mt-1 block">
-                  {approvedMechanics.length} <span className="text-xs font-normal text-slate-400">Nodes</span>
+                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Active Paid Subscribers</span>
+                <span className="text-xl font-extrabold text-emerald-400 mt-1 block">
+                  {approvedMechanics.length} <span className="text-xs font-normal text-slate-400">Garages</span>
                 </span>
               </div>
               <div className="glass-panel p-5 rounded-2xl border-slate-800">
-                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Basic vs Pro Split</span>
-                <span className="text-xl font-extrabold text-amber-400 mt-1 block">
-                  {basicCount} Basic / {proCount} Premium & Pro
+                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Unpaid & Access Blocked</span>
+                <span className="text-xl font-extrabold text-red-400 mt-1 block">
+                  {blockedGarages.length} <span className="text-xs font-normal text-slate-400">Suspended</span>
                 </span>
               </div>
               <div className="glass-panel p-5 rounded-2xl border-slate-800">
@@ -1712,25 +1712,40 @@ export default function SuperAdminDashboard() {
               </div>
             </div>
 
-            <div className="glass-panel p-5 rounded-2xl border-slate-800 space-y-4">
-              <h4 className="text-xs font-extrabold text-slate-300 uppercase tracking-wider">Subscription Oversight Controls</h4>
+            {/* SECTION 1: UNPAID & ACCESS BLOCKED GARAGES */}
+            <div className="glass-panel p-5 rounded-2xl border-red-500/30 bg-red-950/10 space-y-4">
+              <div className="flex justify-between items-center border-b border-red-500/20 pb-3">
+                <div>
+                  <h4 className="text-xs font-extrabold text-red-400 uppercase tracking-wider flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-red-400" />
+                    <span>Unpaid Subscriptions & Blocked Garages ({blockedGarages.length})</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Garages blocked due to unpaid monthly subscriptions. These workshops cannot access the system or open on the map.
+                  </p>
+                </div>
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-red-500/20 text-red-400 border border-red-500/40">
+                  {blockedGarages.length} Blocked
+                </span>
+              </div>
 
-              <div className="space-y-3">
-                {[...approvedMechanics, ...blockedGarages].map((mech) => {
-                  const isBlocked = mech.status === 'Blocked' || mech.status === 'Revoked';
-                  return (
-                    <div key={mech.id} className="bg-slate-900 p-4 rounded-xl border border-slate-850 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+              {blockedGarages.length === 0 ? (
+                <div className="p-6 text-center text-xs text-slate-400 italic">
+                  🎉 No unpaid or blocked garages! All approved workshops have active subscriptions.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {blockedGarages.map((mech) => (
+                    <div key={mech.id} className="bg-slate-900/90 p-4 rounded-xl border border-red-500/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-slate-100">{mech.businessName || mech.name}</span>
-                          <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold border ${
-                            isBlocked ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                          }`}>
-                            {isBlocked ? '🔴 Subscription Blocked' : '🟢 Active Subscriber'}
+                          <span className="text-[9px] px-2 py-0.5 rounded-full font-bold border bg-red-500/20 text-red-400 border-red-500/30">
+                            🔴 SUBSCRIPTION UNPAID (BLOCKED)
                           </span>
                         </div>
                         <div className="text-xs text-slate-400 mt-0.5">
-                          City: {mech.city} • Phone: {mech.phone} • Plan: <strong className="text-amber-400 font-extrabold">{mech.tier} ({mech.radius || 5}km • Max {mech.maxCapacity || 3} Jobs)</strong>
+                          Owner: {mech.name} • City: {mech.city} • Phone: <strong className="text-slate-200">{mech.phone}</strong> • Plan: <strong className="text-amber-400 font-extrabold">{mech.tier} ({mech.radius || 5}km)</strong>
                         </div>
                       </div>
 
@@ -1749,28 +1764,74 @@ export default function SuperAdminDashboard() {
 
                         <button
                           onClick={() => handleToggleBlockMechanic(mech.id)}
-                          className={`py-1.5 px-3 border text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1 ${
-                            isBlocked
-                              ? 'bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-400 border-emerald-500/30'
-                              : 'bg-red-950/40 hover:bg-red-900/60 text-red-400 border-red-500/30'
-                          }`}
+                          className="py-1.5 px-3 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40 text-xs font-extrabold rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
                         >
-                          {isBlocked ? (
-                            <>
-                              <CheckCircle size={12} />
-                              <span>Restore Access</span>
-                            </>
-                          ) : (
-                            <>
-                              <X size={12} />
-                              <span>Revoke Access (Block)</span>
-                            </>
-                          )}
+                          <CheckCircle size={13} />
+                          <span>Restore Access (Payment Received)</span>
                         </button>
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* SECTION 2: ACTIVE PAID SUBSCRIBERS */}
+            <div className="glass-panel p-5 rounded-2xl border-slate-800 space-y-4">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                <div>
+                  <h4 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                    <CheckCircle size={14} className="text-emerald-400" />
+                    <span>Active Paid Subscribers ({approvedMechanics.length})</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Garages with active monthly subscriptions. Click "Revoke Access (Block)" if subscription dues are overdue.
+                  </p>
+                </div>
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                  {approvedMechanics.length} Active
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {approvedMechanics.map((mech) => (
+                  <div key={mech.id} className="bg-slate-900 p-4 rounded-xl border border-slate-850 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-100">{mech.businessName || mech.name}</span>
+                        <span className="text-[9px] px-2 py-0.5 rounded-full font-bold border bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                          🟢 ACTIVE SUBSCRIBER
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-400 mt-0.5">
+                        City: {mech.city} • Phone: {mech.phone} • Plan: <strong className="text-amber-400 font-extrabold">{mech.tier} ({mech.radius || 5}km • Max {mech.maxCapacity || 3} Jobs)</strong>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full md:w-auto">
+                      <select
+                        value={mech.tier}
+                        onChange={(e) => handleAssignTier(mech.id, e.target.value)}
+                        className="py-1.5 px-3 bg-slate-950 border border-amber-500/40 text-amber-300 text-xs font-bold rounded-xl cursor-pointer hover:border-amber-400 focus:outline-none shadow-sm"
+                      >
+                        {plans.map((p) => (
+                          <option key={p.id} value={p.name}>
+                            Tier: {p.name} ({p.radius}km)
+                          </option>
+                        ))}
+                      </select>
+
+                      <button
+                        onClick={() => handleToggleBlockMechanic(mech.id)}
+                        className="py-1.5 px-3 bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-500/30 text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1"
+                        title="Block garage due to unpaid monthly subscription"
+                      >
+                        <X size={12} />
+                        <span>Revoke Access (Unpaid)</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

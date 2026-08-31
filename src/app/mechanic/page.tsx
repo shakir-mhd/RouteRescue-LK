@@ -560,6 +560,10 @@ export default function MechanicPortal() {
 
   const handleToggleOperatingStatus = async () => {
     if (!currentMechanic) return;
+    if (currentMechanic.status === 'Blocked' || currentMechanic.status === 'Revoked') {
+      alert('🔴 Subscription Unpaid & Access Blocked:\n\nYour garage access is temporarily suspended by Super Admin because your monthly subscription fee has not been paid. You cannot open your workshop or receive dispatches until your payment is settled.');
+      return;
+    }
     const newOpenState = currentMechanic.isOpen === false ? true : false;
     const updatedMech = { ...currentMechanic, isOpen: newOpenState, isAvailable: newOpenState };
 
@@ -917,29 +921,36 @@ export default function MechanicPortal() {
         {currentMechanic && currentMechanic.status !== 'Approved' ? (
           currentMechanic.status === 'Blocked' || currentMechanic.status === 'Revoked' ? (
             <div className="max-w-md w-full mx-auto glass-panel p-6 rounded-3xl border-red-500/40 bg-red-950/30 text-center my-auto shadow-2xl">
-              <div className="h-16 w-16 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center mx-auto mb-4 text-3xl animate-bounce">
+              <div className="h-16 w-16 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center mx-auto mb-3 text-3xl animate-bounce">
                 🚫
               </div>
-              <h2 className="text-xl font-black text-red-400 mb-2">Subscription Suspended</h2>
+              <h2 className="text-xl font-black text-red-400 mb-1">Monthly Subscription Unpaid</h2>
+              <span className="inline-block px-3 py-1 rounded-full text-[10px] font-extrabold uppercase bg-red-500/20 text-red-300 border border-red-500/40 mb-4">
+                🔴 Garage Access Temporarily Blocked
+              </span>
               <p className="text-xs text-slate-300 leading-relaxed mb-4">
-                The access for <span className="font-bold text-slate-100">{currentMechanic.businessName || currentMechanic.name}</span> has been <span className="font-bold text-red-400">Blocked / Revoked</span> by Super Admin due to unpaid monthly subscription dues or policy review.
+                Your garage access for <span className="font-bold text-slate-100">{currentMechanic.businessName || currentMechanic.name}</span> has been <span className="font-bold text-red-400">Blocked</span> by Super Admin because your monthly subscription fee has not been paid yet.
               </p>
-              <div className="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 text-[11px] text-slate-400 mb-5 text-left space-y-1.5">
-                <div className="flex justify-between">
-                  <span>Account Status:</span>
-                  <span className="font-bold text-red-400 uppercase tracking-wider">Access Revoked</span>
+              <div className="bg-slate-900/90 p-4 rounded-2xl border border-red-500/30 text-[11px] text-slate-400 mb-5 text-left space-y-2">
+                <div className="flex justify-between border-b border-slate-800 pb-1.5">
+                  <span>Subscription Status:</span>
+                  <span className="font-bold text-red-400 uppercase tracking-wider">UNPAID & BLOCKED</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between border-b border-slate-800 pb-1.5">
+                  <span>Workshop Duty State:</span>
+                  <span className="font-bold text-slate-300">🔴 Closed / Offline</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-800 pb-1.5">
                   <span>Registered Mobile:</span>
                   <span className="font-mono text-slate-200">{currentMechanic.phone}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Registered City:</span>
-                  <span className="text-slate-200">{currentMechanic.city}</span>
+                  <span>Super Admin Contact:</span>
+                  <span className="font-bold text-amber-400">0771234567</span>
                 </div>
               </div>
               <p className="text-[10px] text-slate-400 mb-4 italic">
-                Please contact Super Admin to settle your subscription dues and restore dispatch dashboard access.
+                Please settle your monthly subscription payment with Super Admin to unblock your garage and resume emergency road calls.
               </p>
               <button
                 onClick={handleLogout}
