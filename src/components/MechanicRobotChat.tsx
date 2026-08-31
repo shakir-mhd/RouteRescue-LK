@@ -84,23 +84,23 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
   const getRoleHeader = () => {
     if (userRole === 'driver') {
       return {
-        title: 'Gearhead Emergency AI',
-        subtitle: 'Roadside Safety & Breakdown Advisor',
+        title: 'Rescue AI',
+        subtitle: 'Roadside Emergency & Safety Advisor',
         badge: 'Motorist Mode',
         icon: <Car size={14} className="text-orange-400" />,
         accent: 'from-orange-500 to-amber-600',
       };
     } else if (userRole === 'mechanic') {
       return {
-        title: 'Gearhead Tech AI',
-        subtitle: 'Master Mechanic & Diagnostic Advisor',
+        title: 'Rescue AI',
+        subtitle: 'Master Technical & Diagnostic Advisor',
         badge: 'Mechanic Mode',
         icon: <Wrench size={14} className="text-emerald-400" />,
         accent: 'from-emerald-500 to-teal-600',
       };
     } else {
       return {
-        title: 'Gearhead Ops AI',
+        title: 'Rescue AI',
         subtitle: 'Platform Operations & Strategy Assistant',
         badge: 'Super Admin Mode',
         icon: <Shield size={14} className="text-cyan-400" />,
@@ -123,7 +123,7 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
           whileTap={{ scale: 0.92 }}
           transition={{ type: 'spring', stiffness: 260, damping: 20 }}
           className="relative group flex items-center justify-center h-16 w-16 rounded-full bg-slate-900 border-2 border-amber-500/60 shadow-2xl cursor-pointer overflow-visible"
-          aria-label="Toggle Gearhead AI Assistant"
+          aria-label="Toggle Rescue AI Assistant"
         >
           {/* Pulsing Status Ring */}
           <span className="absolute -inset-1 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-emerald-500 blur-sm opacity-70 group-hover:opacity-100 animate-pulse transition duration-500" />
@@ -200,7 +200,7 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
               <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 text-slate-300 space-y-1.5">
                 <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
                   <Sparkles size={14} />
-                  <span>Welcome to Gearhead AI</span>
+                  <span>Welcome to Rescue AI</span>
                 </div>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
                   I am your 24/7 intelligent assistant powered by Gemini. Ask me about breakdown emergencies, mechanical diagnostics, safety tips, or platform controls.
@@ -250,7 +250,7 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
                     <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
                     <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse delay-150" />
                     <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse delay-300" />
-                    <span className="text-slate-400 font-semibold ml-1">Gearhead AI is thinking...</span>
+                    <span className="text-slate-400 font-semibold ml-1">Rescue AI is thinking...</span>
                   </div>
                 </div>
               )}
@@ -287,13 +287,7 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder={
-                  userRole === 'driver'
-                    ? 'Ask emergency roadside questions...'
-                    : userRole === 'mechanic'
-                    ? 'Ask mechanic diagnostic questions...'
-                    : 'Ask operational & admin questions...'
-                }
+                placeholder="Ask Rescue AI a question..."
                 className="flex-grow px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-amber-500 placeholder:text-slate-500"
               />
               <button
