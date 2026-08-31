@@ -361,15 +361,55 @@ export default function MechanicPortal() {
     return oldNicRegex.test(value) || newNicRegex.test(value);
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
     const cleanInput = loginPhone.trim().toLowerCase();
-    const matched = mechanics.find(
+    
+    let matched = mechanics.find(
       (m) =>
-        m.phone === cleanInput ||
-        (m.email && m.email.trim().toLowerCase() === cleanInput)
+        String(m.phone).trim().toLowerCase() === cleanInput ||
+        (m.email && String(m.email).trim().toLowerCase() === cleanInput)
     );
+
+    if (!matched) {
+      try {
+        const { data: dbMechs } = await supabase.from('mechanics').select('*');
+        if (dbMechs && dbMechs.length > 0) {
+          const foundInDb = dbMechs.find(
+            (m: any) =>
+              (m.phone && String(m.phone).trim().toLowerCase() === cleanInput) ||
+              (m.email && String(m.email).trim().toLowerCase() === cleanInput)
+          );
+          if (foundInDb) {
+            matched = {
+              id: String(foundInDb.id),
+              name: String(foundInDb.name || ''),
+              phone: String(foundInDb.phone || ''),
+              email: String(foundInDb.email || ''),
+              nic: String(foundInDb.nic || ''),
+              password: String(foundInDb.password || ''),
+              city: String(foundInDb.city || 'Colombo'),
+              lat: Number(foundInDb.lat || 6.9271),
+              lng: Number(foundInDb.lng || 79.8612),
+              tier: String(foundInDb.tier || 'Basic'),
+              radius: Number(foundInDb.radius || 5),
+              status: foundInDb.status as any,
+              businessName: String(foundInDb.business_name || foundInDb.businessName || foundInDb.name),
+              isAvailable: typeof foundInDb.is_available === 'boolean' ? foundInDb.is_available : true,
+              isOpen: typeof foundInDb.is_open === 'boolean' ? foundInDb.is_open : true,
+              activeJobs: Number(foundInDb.active_jobs || foundInDb.activeJobs || 0),
+              maxCapacity: Number(foundInDb.max_capacity || foundInDb.maxCapacity || 3),
+              employees: Array.isArray(foundInDb.employees) ? foundInDb.employees : [],
+              pendingLocation: foundInDb.pending_location || foundInDb.pendingLocation || undefined,
+            };
+          }
+        }
+      } catch (err) {
+        console.error('Supabase login check error:', err);
+      }
+    }
+
     if (matched) {
       setCurrentMechanic(matched);
       if (typeof window !== 'undefined') {
