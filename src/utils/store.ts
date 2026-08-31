@@ -37,7 +37,7 @@ export interface Mechanic {
   tier: string;
   radius: number;
   phone: string;
-  status: 'Approved' | 'Pending' | 'Rejected';
+  status: 'Approved' | 'Pending' | 'Rejected' | 'Blocked' | 'Revoked';
   businessName: string;
   nic: string;
   password?: string;

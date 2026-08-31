@@ -40,8 +40,8 @@ export default function SuperAdminDashboard() {
   const [adminHistorySearchQuery, setAdminHistorySearchQuery] = useState('');
   const [adminHistoryCategoryFilter, setAdminHistoryCategoryFilter] = useState('all');
 
-  // Directory status filter: 'approved' | 'rejected'
-  const [directoryFilter, setDirectoryFilter] = useState<'approved' | 'rejected'>('approved');
+  // Directory status filter: 'approved' | 'blocked' | 'rejected'
+  const [directoryFilter, setDirectoryFilter] = useState<'approved' | 'blocked' | 'rejected'>('approved');
 
   // Directory Modal Details
   const [selectedMechanicModal, setSelectedMechanicModal] = useState<Mechanic | null>(null);
@@ -52,12 +52,13 @@ export default function SuperAdminDashboard() {
   const [adminSettings, setAdminSettings] = useSharedState<AdminSettings>('routerescue_admin_settings', DEFAULT_ADMIN_SETTINGS);
   const [plans, setPlans] = useSharedState<SubscriptionPlan[]>('routerescue_plans', DEFAULT_PLANS);
 
-  // Real-Time Heartbeat Auto-Sync: Poll Supabase 'incidents' table every 2.5 seconds
+  // Real-Time Heartbeat Auto-Sync: Poll Supabase 'incidents' & 'mechanics' tables every 2.5 seconds
   useEffect(() => {
     let isMounted = true;
 
-    async function syncIncidentsFromSupabase() {
+    async function syncFromSupabase() {
       try {
+        // Sync Incidents
         const { data, error } = await supabase.from('incidents').select('*').order('timestamp', { ascending: false });
         if (!error && data && isMounted) {
           const cancelledIds = getCancelledIncidentIds();
@@ -98,18 +99,44 @@ export default function SuperAdminDashboard() {
             return merged;
           });
         }
+
+        // Sync Mechanics directly from Supabase Database
+        const { data: mechData, error: mechErr } = await supabase.from('mechanics').select('*');
+        if (!mechErr && mechData && isMounted) {
+          const formattedMechs: Mechanic[] = mechData.map((m: any) => ({
+            id: String(m.id),
+            name: String(m.name || ''),
+            phone: String(m.phone || ''),
+            nic: String(m.nic || ''),
+            password: String(m.password || ''),
+            city: String(m.city || 'Colombo'),
+            lat: Number(m.lat || 6.9271),
+            lng: Number(m.lng || 79.8612),
+            tier: String(m.tier || 'Basic'),
+            radius: Number(m.radius || 5),
+            status: m.status as any,
+            businessName: String(m.business_name || m.businessName || m.name),
+            isAvailable: typeof m.is_available === 'boolean' ? m.is_available : true,
+            isOpen: typeof m.is_open === 'boolean' ? m.is_open : true,
+            activeJobs: Number(m.active_jobs || m.activeJobs || 0),
+            maxCapacity: Number(m.max_capacity || m.maxCapacity || 3),
+            employees: Array.isArray(m.employees) ? m.employees : [],
+            pendingLocation: m.pending_location || m.pendingLocation || undefined,
+          }));
+          setMechanics(formattedMechs);
+        }
       } catch (err) {
-        console.error('Real-time admin incidents heartbeat error:', err);
+        console.error('Real-time admin heartbeat error:', err);
       }
     }
 
-    syncIncidentsFromSupabase();
-    const interval = setInterval(syncIncidentsFromSupabase, 2500);
+    syncFromSupabase();
+    const interval = setInterval(syncFromSupabase, 2500);
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [setIncidents]);
+  }, [setIncidents, setMechanics]);
 
   // Subscription Plan Form State
   const [newPlanName, setNewPlanName] = useState('');
@@ -411,7 +438,7 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  const handleApproveVendor = (id: number | string) => {
+  const handleApproveVendor = async (id: number | string) => {
     const vendorToApprove = mechanics.find((m) => String(m.id) === String(id));
     const updatedList = mechanics.map((m) => {
       const matches =
@@ -445,9 +472,19 @@ export default function SuperAdminDashboard() {
         } catch (e) {}
       }
     }
+
+    try {
+      const targetId = vendorToApprove ? String(vendorToApprove.id) : String(id);
+      await supabase.from('mechanics').update({ status: 'Approved' }).eq('id', targetId);
+      if (vendorToApprove?.phone) {
+        await supabase.from('mechanics').update({ status: 'Approved' }).eq('phone', vendorToApprove.phone);
+      }
+    } catch (err) {
+      console.error('Error approving mechanic in Supabase:', err);
+    }
   };
 
-  const handleRejectVendor = (id: number | string) => {
+  const handleRejectVendor = async (id: number | string) => {
     const vendorToReject = mechanics.find((m) => String(m.id) === String(id));
     setMechanics(
       mechanics.map((m) => {
@@ -458,12 +495,22 @@ export default function SuperAdminDashboard() {
             (m.phone && vendorToReject.phone && String(m.phone).trim() === String(vendorToReject.phone).trim()) ||
             (m.businessName && vendorToReject.businessName && String(m.businessName).trim().toLowerCase() === String(vendorToReject.businessName).trim().toLowerCase())
           ));
-        return matches ? { ...m, status: 'Rejected' } : m;
+        return matches ? { ...m, status: 'Rejected' as const } : m;
       })
     );
+
+    try {
+      const targetId = vendorToReject ? String(vendorToReject.id) : String(id);
+      await supabase.from('mechanics').update({ status: 'Rejected' }).eq('id', targetId);
+      if (vendorToReject?.phone) {
+        await supabase.from('mechanics').update({ status: 'Rejected' }).eq('phone', vendorToReject.phone);
+      }
+    } catch (err) {
+      console.error('Error rejecting mechanic in Supabase:', err);
+    }
   };
 
-  const handleAssignTier = (id: number | string, newTierName: string) => {
+  const handleAssignTier = async (id: number | string, newTierName: string) => {
     const matchedPlan = plans.find((p) => p.name.toLowerCase() === newTierName.toLowerCase());
     const updatedRadius = matchedPlan ? Number(matchedPlan.radius) : 5;
     const updatedCap = matchedPlan ? Number(matchedPlan.maxCapacity || 3) : 3;
@@ -480,27 +527,54 @@ export default function SuperAdminDashboard() {
       return m;
     });
     setMechanics(updatedMechs);
+
+    try {
+      await supabase.from('mechanics').update({
+        tier: newTierName,
+        radius: updatedRadius,
+        max_capacity: updatedCap,
+      }).eq('id', String(id));
+    } catch (err) {
+      console.error('Error updating tier in Supabase:', err);
+    }
   };
 
-  const handleToggleTier = (id: number | string) => {
-    setMechanics(
-      mechanics.map((m) => {
-        if (String(m.id) === String(id)) {
-          const currentIndex = plans.findIndex((p) => p.name.toLowerCase() === String(m.tier).toLowerCase());
-          const nextPlan = plans[(currentIndex + 1) % (plans.length || 1)] || plans[0] || { name: 'Basic', radius: 5, maxCapacity: 3 };
-          return {
-            ...m,
-            tier: nextPlan.name,
-            radius: Number(nextPlan.radius) || 5,
-            maxCapacity: Number(nextPlan.maxCapacity) || 3,
-          };
-        }
-        return m;
-      })
-    );
+  const handleToggleBlockMechanic = async (id: number | string) => {
+    const vendor = mechanics.find((m) => String(m.id) === String(id));
+    if (!vendor) return;
+
+    const isCurrentlyBlocked = vendor.status === 'Blocked' || vendor.status === 'Revoked';
+    const newStatus = isCurrentlyBlocked ? 'Approved' : 'Blocked';
+    const actionLabel = isCurrentlyBlocked ? 'Restore Access' : 'Revoke Access & Block Subscription';
+
+    if (!confirm(`Are you sure you want to ${actionLabel} for "${vendor.businessName || vendor.name}"?`)) {
+      return;
+    }
+
+    const updatedList = mechanics.map((m) => {
+      const matches =
+        String(m.id) === String(id) ||
+        (vendor && (
+          (m.nic && vendor.nic && String(m.nic).trim().toLowerCase() === String(vendor.nic).trim().toLowerCase()) ||
+          (m.phone && vendor.phone && String(m.phone).trim() === String(vendor.phone).trim())
+        ));
+      return matches ? { ...m, status: newStatus as any } : m;
+    });
+
+    setMechanics(updatedList);
+
+    try {
+      const targetId = String(vendor.id);
+      await supabase.from('mechanics').update({ status: newStatus }).eq('id', targetId);
+      if (vendor.phone) {
+        await supabase.from('mechanics').update({ status: newStatus }).eq('phone', vendor.phone);
+      }
+    } catch (err) {
+      console.error('Error updating block status in Supabase:', err);
+    }
   };
 
-  const handleDeleteMechanic = (id: number | string) => {
+  const handleDeleteMechanic = async (id: number | string) => {
     const mechToDelete = mechanics.find((m) => String(m.id) === String(id));
     const mechName = mechToDelete ? (mechToDelete.businessName || mechToDelete.name) : 'this garage';
 
@@ -520,6 +594,19 @@ export default function SuperAdminDashboard() {
           }
         } catch (e) {}
       }
+    }
+
+    try {
+      const targetId = String(id);
+      await supabase.from('mechanics').delete().eq('id', targetId);
+      if (mechToDelete?.phone) {
+        await supabase.from('mechanics').delete().eq('phone', mechToDelete.phone);
+      }
+      if (mechToDelete?.nic) {
+        await supabase.from('mechanics').delete().eq('nic', mechToDelete.nic);
+      }
+    } catch (err) {
+      console.error('Error deleting mechanic from Supabase:', err);
     }
   };
 
@@ -626,10 +713,21 @@ export default function SuperAdminDashboard() {
       }
     }
 
+    try {
+      await supabase.from('mechanics').update({
+        city: newCity,
+        lat: newLat,
+        lng: newLng,
+        pending_location: null,
+      }).eq('id', String(id));
+    } catch (err) {
+      console.error('Error updating location in Supabase:', err);
+    }
+
     alert(`✅ Location change approved for ${vendor.businessName || vendor.name}.\n\nNew Location: ${newCity} (${newLat.toFixed(4)}, ${newLng.toFixed(4)}) is now LIVE for motorist searches.`);
   };
 
-  const handleRejectLocationChange = (id: number | string) => {
+  const handleRejectLocationChange = async (id: number | string) => {
     const vendor = mechanics.find((m) => String(m.id) === String(id));
     if (!vendor || !vendor.pendingLocation) return;
 
@@ -657,10 +755,19 @@ export default function SuperAdminDashboard() {
       }
     }
 
+    try {
+      await supabase.from('mechanics').update({
+        pending_location: null,
+      }).eq('id', String(id));
+    } catch (err) {
+      console.error('Error clearing pending_location in Supabase:', err);
+    }
+
     alert(`Location change request rejected for ${vendor.businessName || vendor.name}.`);
   };
 
   const approvedMechanics = mechanics.filter((m) => m.status === 'Approved');
+  const blockedGarages = mechanics.filter((m) => m.status === 'Blocked' || m.status === 'Revoked');
   const basicCount = approvedMechanics.filter((m) => (m.tier || '').toLowerCase().includes('basic')).length;
   const proCount = approvedMechanics.length - basicCount;
   const totalMonthlyRevenue = approvedMechanics.reduce((sum, m) => {
@@ -1375,6 +1482,17 @@ export default function SuperAdminDashboard() {
                   <span>Approved Active ({approvedMechanics.length})</span>
                 </button>
                 <button
+                  onClick={() => setDirectoryFilter('blocked')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    directoryFilter === 'blocked'
+                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <AlertTriangle size={13} className="text-amber-400" />
+                  <span>Blocked ({blockedGarages.length})</span>
+                </button>
+                <button
                   onClick={() => setDirectoryFilter('rejected')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
                     directoryFilter === 'rejected'
@@ -1453,6 +1571,59 @@ export default function SuperAdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            ) : directoryFilter === 'blocked' ? (
+              <div className="space-y-3">
+                {blockedGarages.length === 0 ? (
+                  <div className="text-center py-10 text-slate-500 text-xs font-semibold">
+                    No blocked or suspended garages.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-[10px] text-slate-500 uppercase tracking-wider">
+                          <th className="pb-3 pt-2 font-bold">Blocked Garage</th>
+                          <th className="pb-3 pt-2 font-bold">Owner & Phone</th>
+                          <th className="pb-3 pt-2 font-bold">City</th>
+                          <th className="pb-3 pt-2 font-bold">Status</th>
+                          <th className="pb-3 pt-2 font-bold text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-850 text-slate-200">
+                        {blockedGarages.map((mech) => (
+                          <tr key={mech.id} className="hover:bg-slate-900/50">
+                            <td className="py-3 font-bold text-slate-100">{mech.businessName || mech.name}</td>
+                            <td className="py-3 text-slate-300">{mech.name} ({mech.phone})</td>
+                            <td className="py-3 font-semibold text-slate-300">{mech.city}</td>
+                            <td className="py-3">
+                              <span className="text-[9px] px-2 py-0.5 rounded-full font-bold border bg-red-500/20 text-red-400 border-red-500/30">
+                                🔴 Subscription Blocked
+                              </span>
+                            </td>
+                            <td className="py-3 text-right flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleToggleBlockMechanic(mech.id)}
+                                className="py-1.5 px-3 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-extrabold rounded-lg border border-emerald-500/30 cursor-pointer flex items-center gap-1"
+                              >
+                                <CheckCircle size={12} />
+                                <span>Restore Access</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMechanic(mech.id)}
+                                className="py-1.5 px-2.5 bg-red-950/30 hover:bg-red-950/60 text-red-400 text-xs font-bold rounded-lg border border-red-500/30 flex items-center gap-1 cursor-pointer transition-all"
+                                title="Permanently Delete Garage"
+                              >
+                                <Trash2 size={13} />
+                                <span>Delete</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
@@ -1545,37 +1716,61 @@ export default function SuperAdminDashboard() {
               <h4 className="text-xs font-extrabold text-slate-300 uppercase tracking-wider">Subscription Oversight Controls</h4>
 
               <div className="space-y-3">
-                {approvedMechanics.map((mech) => (
-                  <div key={mech.id} className="bg-slate-900 p-4 rounded-xl border border-slate-850 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                    <div>
-                      <div className="font-bold text-slate-100">{mech.businessName || mech.name}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">
-                        City: {mech.city} • Phone: {mech.phone} • Plan: <strong className="text-amber-400 font-extrabold">{mech.tier} ({mech.radius || 5}km • Max {mech.maxCapacity || 3} Jobs)</strong>
+                {[...approvedMechanics, ...blockedGarages].map((mech) => {
+                  const isBlocked = mech.status === 'Blocked' || mech.status === 'Revoked';
+                  return (
+                    <div key={mech.id} className="bg-slate-900 p-4 rounded-xl border border-slate-850 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-100">{mech.businessName || mech.name}</span>
+                          <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold border ${
+                            isBlocked ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                          }`}>
+                            {isBlocked ? '🔴 Subscription Blocked' : '🟢 Active Subscriber'}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-400 mt-0.5">
+                          City: {mech.city} • Phone: {mech.phone} • Plan: <strong className="text-amber-400 font-extrabold">{mech.tier} ({mech.radius || 5}km • Max {mech.maxCapacity || 3} Jobs)</strong>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 w-full md:w-auto">
+                        <select
+                          value={mech.tier}
+                          onChange={(e) => handleAssignTier(mech.id, e.target.value)}
+                          className="py-1.5 px-3 bg-slate-950 border border-amber-500/40 text-amber-300 text-xs font-bold rounded-xl cursor-pointer hover:border-amber-400 focus:outline-none shadow-sm"
+                        >
+                          {plans.map((p) => (
+                            <option key={p.id} value={p.name}>
+                              Tier: {p.name} ({p.radius}km)
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          onClick={() => handleToggleBlockMechanic(mech.id)}
+                          className={`py-1.5 px-3 border text-xs font-bold rounded-lg cursor-pointer transition-all flex items-center gap-1 ${
+                            isBlocked
+                              ? 'bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-400 border-emerald-500/30'
+                              : 'bg-red-950/40 hover:bg-red-900/60 text-red-400 border-red-500/30'
+                          }`}
+                        >
+                          {isBlocked ? (
+                            <>
+                              <CheckCircle size={12} />
+                              <span>Restore Access</span>
+                            </>
+                          ) : (
+                            <>
+                              <X size={12} />
+                              <span>Revoke Access (Block)</span>
+                            </>
+                          )}
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2 w-full md:w-auto">
-                      <select
-                        value={mech.tier}
-                        onChange={(e) => handleAssignTier(mech.id, e.target.value)}
-                        className="py-1.5 px-3 bg-slate-950 border border-amber-500/40 text-amber-300 text-xs font-bold rounded-xl cursor-pointer hover:border-amber-400 focus:outline-none shadow-sm"
-                      >
-                        {plans.map((p) => (
-                          <option key={p.id} value={p.name}>
-                            Tier: {p.name} ({p.radius}km)
-                          </option>
-                        ))}
-                      </select>
-
-                      <button
-                        onClick={() => handleDeleteMechanic(mech.id)}
-                        className="py-1.5 px-3 bg-red-950/20 text-red-400 border border-red-500/20 text-xs font-bold rounded-lg cursor-pointer hover:bg-red-950/40"
-                      >
-                        Revoke Access
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

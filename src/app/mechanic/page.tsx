@@ -67,7 +67,7 @@ interface Mechanic {
   phone: string;
   nic: string;
   password?: string;
-  status: 'Pending' | 'Approved' | 'Rejected';
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Blocked' | 'Revoked';
   isAvailable?: boolean;
   isOpen?: boolean;
   activeJobs?: number;
@@ -915,31 +915,65 @@ export default function MechanicPortal() {
       {/* Main Content Router */}
       <main className="max-w-5xl w-full mx-auto flex-grow flex flex-col">
         {currentMechanic && currentMechanic.status !== 'Approved' ? (
-          <div className="max-w-md w-full mx-auto glass-panel p-6 rounded-3xl border-amber-500/30 bg-amber-950/20 text-center my-auto shadow-2xl">
-            <div className="h-16 w-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto mb-4 text-3xl animate-pulse">
-              ⏳
+          currentMechanic.status === 'Blocked' || currentMechanic.status === 'Revoked' ? (
+            <div className="max-w-md w-full mx-auto glass-panel p-6 rounded-3xl border-red-500/40 bg-red-950/30 text-center my-auto shadow-2xl">
+              <div className="h-16 w-16 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center mx-auto mb-4 text-3xl animate-bounce">
+                🚫
+              </div>
+              <h2 className="text-xl font-black text-red-400 mb-2">Subscription Suspended</h2>
+              <p className="text-xs text-slate-300 leading-relaxed mb-4">
+                The access for <span className="font-bold text-slate-100">{currentMechanic.businessName || currentMechanic.name}</span> has been <span className="font-bold text-red-400">Blocked / Revoked</span> by Super Admin due to unpaid monthly subscription dues or policy review.
+              </p>
+              <div className="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 text-[11px] text-slate-400 mb-5 text-left space-y-1.5">
+                <div className="flex justify-between">
+                  <span>Account Status:</span>
+                  <span className="font-bold text-red-400 uppercase tracking-wider">Access Revoked</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Registered Mobile:</span>
+                  <span className="font-mono text-slate-200">{currentMechanic.phone}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Registered City:</span>
+                  <span className="text-slate-200">{currentMechanic.city}</span>
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400 mb-4 italic">
+                Please contact Super Admin to settle your subscription dues and restore dispatch dashboard access.
+              </p>
+              <button
+                onClick={handleLogout}
+                className="w-full py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-bold transition-all cursor-pointer"
+              >
+                Log Out of Account
+              </button>
             </div>
-            <h2 className="text-xl font-black text-slate-100 mb-2">Account Pending Verification</h2>
-            <p className="text-xs text-slate-300 leading-relaxed mb-4">
-              Your garage registration for <span className="font-bold text-amber-400">{currentMechanic.businessName || currentMechanic.name}</span> (NIC: <span className="font-mono text-slate-200">{currentMechanic.nic}</span>) has been submitted to the Super Admin Control Center.
-            </p>
-            <div className="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 text-[11px] text-slate-400 mb-5 text-left space-y-1.5">
-              <div className="flex justify-between">
-                <span>Verification Status:</span>
-                <span className="font-bold text-amber-400 uppercase tracking-wider">Under Audit</span>
+          ) : (
+            <div className="max-w-md w-full mx-auto glass-panel p-6 rounded-3xl border-amber-500/30 bg-amber-950/20 text-center my-auto shadow-2xl">
+              <div className="h-16 w-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto mb-4 text-3xl animate-pulse">
+                ⏳
               </div>
-              <div className="flex justify-between">
-                <span>Registered Mobile:</span>
-                <span className="font-mono text-slate-200">{currentMechanic.phone}</span>
+              <h2 className="text-xl font-black text-slate-100 mb-2">Account Pending Verification</h2>
+              <p className="text-xs text-slate-300 leading-relaxed mb-4">
+                Your garage registration for <span className="font-bold text-amber-400">{currentMechanic.businessName || currentMechanic.name}</span> (NIC: <span className="font-mono text-slate-200">{currentMechanic.nic}</span>) has been submitted to the Super Admin Control Center.
+              </p>
+              <div className="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 text-[11px] text-slate-400 mb-5 text-left space-y-1.5">
+                <div className="flex justify-between">
+                  <span>Verification Status:</span>
+                  <span className="font-bold text-amber-400 uppercase tracking-wider">Under Audit</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Registered Mobile:</span>
+                  <span className="font-mono text-slate-200">{currentMechanic.phone}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Coverage Radius:</span>
+                  <span className="text-slate-200">{currentMechanic.radius} km ({currentMechanic.tier})</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span>Coverage Radius:</span>
-                <span className="text-slate-200">{currentMechanic.radius} km ({currentMechanic.tier})</span>
-              </div>
-            </div>
-            <p className="text-[10px] text-slate-400 mb-5 italic">
-              Once Super Admin completes identity audit & approves your account, your dispatch dashboard will automatically unlock.
-            </p>
+              <p className="text-[10px] text-slate-400 mb-5 italic">
+                Once Super Admin completes identity audit & approves your account, your dispatch dashboard will automatically unlock.
+              </p>
             <div className="flex gap-3">
               <button
                 onClick={() => {
@@ -998,7 +1032,7 @@ export default function MechanicPortal() {
               </button>
             </div>
           </div>
-        ) : !currentMechanic ? (
+        )) : !currentMechanic ? (
           <div className="max-w-md w-full mx-auto glass-panel p-6 rounded-3xl border-slate-800 shadow-2xl my-auto">
             <div className="text-center mb-6 flex flex-col items-center">
               <div className="relative group cursor-pointer mb-3">
