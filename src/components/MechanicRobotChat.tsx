@@ -114,7 +114,7 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
   return (
     <>
       {/* FLOATING ANIMATED ROBOT BUTTON */}
-      <div className="fixed bottom-5 right-5 z-50">
+      <div className="fixed bottom-20 sm:bottom-6 right-5 z-[99999]">
         <motion.button
           onClick={() => setIsOpen(!isOpen)}
           initial={{ scale: 0, opacity: 0 }}
@@ -157,7 +157,7 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="fixed bottom-24 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[400px] h-[580px] max-h-[80vh] glass-panel bg-slate-950/95 backdrop-blur-2xl rounded-3xl border border-slate-800 shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-36 sm:bottom-24 right-4 sm:right-6 z-[99999] w-[calc(100vw-2rem)] sm:w-[400px] h-[580px] max-h-[75vh] glass-panel bg-slate-950/95 backdrop-blur-2xl rounded-3xl border border-slate-800 shadow-2xl flex flex-col overflow-hidden"
           >
             {/* CHAT HEADER */}
             <div className={`p-4 bg-gradient-to-r ${roleInfo.accent} text-slate-950 flex items-center justify-between shadow-md`}>
