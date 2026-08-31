@@ -914,14 +914,29 @@ export default function MechanicPortal() {
     setSettingsPassword('');
   };
 
-  const handleSendMobileOtp = () => {
+  const handleSendMobileOtp = async () => {
     setOtpSent(true);
+    if (!currentMechanic) return;
+    const targetEmail = currentMechanic.email || `${(currentMechanic.businessName || currentMechanic.name).toLowerCase().replace(/[^a-z0-9]/g, '')}@routerescue.lk`;
+    try {
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          toEmail: targetEmail,
+          otpCode: '1234',
+          garageName: currentMechanic.businessName || currentMechanic.name,
+        }),
+      });
+    } catch (e) {
+      console.error('Failed to trigger send-email API:', e);
+    }
   };
 
   const handleVerifyMobileOtp = () => {
     if (otpCode === '1234' || otpCode.length === 4) {
       setOtpModalOpen(false);
-      setSettingsSuccess('Mobile OTP verified. Account security credentials synchronized.');
+      setSettingsSuccess('Email Security Verification code verified. Account security credentials synchronized.');
       setOtpSent(false);
       setOtpCode('');
     }
