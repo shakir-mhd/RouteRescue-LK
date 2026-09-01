@@ -3,13 +3,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Phone, ArrowLeft, Key, User, Lock, FileText, MapPin, Compass, LogOut, Navigation, AlertTriangle } from 'lucide-react';
+import { Phone, ArrowLeft, Key, User, Lock, FileText, MapPin, Compass, LogOut, Navigation, AlertTriangle, History, Download, Search, Filter, CheckCircle2, XCircle, Clock, X } from 'lucide-react';
 import { useSharedState, Incident, Mechanic, Driver, SEED_MECHANICS, calculateDistanceKm, SRI_LANKA_REGIONS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs } from '../../utils/store';
 import { supabase } from '../../utils/supabase';
 import MapDashboard from '../../components/MapDashboard';
 import TriageDrawer from '../../components/TriageDrawer';
 import LiveTracker from '../../components/LiveTracker';
 import MechanicRobotChat from '../../components/MechanicRobotChat';
+import InvoiceModal from '../../components/InvoiceModal';
+import { generateIncidentInvoicePDF } from '../../utils/pdfGenerator';
 
 const CITIES = SRI_LANKA_REGIONS.map((r) => ({
   name: r.name,
@@ -73,6 +75,13 @@ export default function MotoristPortal() {
 
   // GPS Tracking Status State
   const [gpsStatus, setGpsStatus] = useState<string>('Ready');
+
+  // Invoice & History States
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [selectedInvoiceIncident, setSelectedInvoiceIncident] = useState<Incident | null>(null);
+  const [driverHistoryOpen, setDriverHistoryOpen] = useState(false);
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<'All' | 'Resolved' | 'Cancelled'>('All');
 
   // Restore login session locally & request device GPS coordinates
   useEffect(() => {
@@ -602,6 +611,10 @@ export default function MotoristPortal() {
     setActiveIncident(null);
     setActiveView('map');
 
+    // Automatically trigger post-repair invoice modal for motorist
+    setSelectedInvoiceIncident(resolvedIncident);
+    setInvoiceModalOpen(true);
+
     if (typeof window !== 'undefined') {
       localStorage.removeItem('routerescue_active_incident');
       window.dispatchEvent(new Event('local-storage-sync'));
@@ -685,6 +698,28 @@ export default function MotoristPortal() {
   };
 
   const isIncidentActive = activeIncident !== null;
+
+  const driverHistoryIncidents = incidents.filter((inc) => {
+    const isDriverMatch =
+      !inc.driverPhone ||
+      !phone ||
+      inc.driverPhone.replace(/\D/g, '') === phone.replace(/\D/g, '') ||
+      (driverName && inc.driverName && inc.driverName.toLowerCase().includes(driverName.toLowerCase()));
+
+    if (!isDriverMatch) return false;
+
+    if (historyStatusFilter === 'Resolved') return inc.status === 'Resolved';
+    if (historyStatusFilter === 'Cancelled') return inc.status === 'Cancelled';
+    return true;
+  }).filter((inc) => {
+    if (!historySearchQuery.trim()) return true;
+    const q = historySearchQuery.toLowerCase();
+    return (
+      inc.id.toLowerCase().includes(q) ||
+      inc.category.toLowerCase().includes(q) ||
+      (inc.driverName && inc.driverName.toLowerCase().includes(q))
+    );
+  });
 
   return (
     <div className="relative flex flex-col h-screen w-full select-none overflow-hidden bg-slate-950 text-slate-100">
@@ -1125,7 +1160,7 @@ export default function MotoristPortal() {
                   <span className={`text-xs font-bold transition-colors ${activeView === 'tracker' ? 'text-accent-orange' : 'text-slate-400'}`}>
                     🚨 Live Tracker
                   </span>
-                  {isIncidentActive && (
+                  {activeIncident && activeIncident.status !== 'Resolved' && activeIncident.status !== 'Cancelled' && (
                     <span className="absolute -top-1 -right-2 flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-orange opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-accent-orange"></span>
@@ -1133,9 +1168,156 @@ export default function MotoristPortal() {
                   )}
                 </div>
               </button>
+
+              <button
+                onClick={() => setDriverHistoryOpen(true)}
+                className="relative flex flex-col items-center gap-1 py-1.5 px-4 rounded-xl cursor-pointer hover:bg-slate-900/80 transition-all"
+              >
+                <span className="text-xs font-bold text-slate-400 hover:text-amber-400 flex items-center gap-1">
+                  📜 History
+                </span>
+              </button>
             </div>
           </div>
         </nav>
+
+          {/* Slide-Over Driver Rescue History Drawer */}
+          <AnimatePresence>
+            {driverHistoryOpen && (
+              <div className="fixed inset-0 z-[9990] flex justify-end bg-slate-950/70 backdrop-blur-sm">
+                <motion.div
+                  initial={{ x: '100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '100%' }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="w-full max-w-md h-full bg-slate-950 border-l border-slate-800 flex flex-col shadow-2xl overflow-hidden"
+                >
+                  {/* History Drawer Header */}
+                  <div className="p-5 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                        <History size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-white">Rescue Incident History</h3>
+                        <span className="text-[10px] text-slate-400">View past requests & download official PDF invoices</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setDriverHistoryOpen(false)}
+                      className="p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Filter & Search Bar */}
+                  <div className="p-4 border-b border-slate-800/80 space-y-3 bg-slate-950">
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <input
+                        type="text"
+                        value={historySearchQuery}
+                        onChange={(e) => setHistorySearchQuery(e.target.value)}
+                        placeholder="Search incident ID, category..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      {(['All', 'Resolved', 'Cancelled'] as const).map((st) => (
+                        <button
+                          key={st}
+                          onClick={() => setHistoryStatusFilter(st)}
+                          className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                            historyStatusFilter === st
+                              ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
+                              : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                          }`}
+                        >
+                          {st}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* History Incidents List */}
+                  <div className="flex-grow overflow-y-auto p-4 space-y-3">
+                    {driverHistoryIncidents.length === 0 ? (
+                      <div className="text-center py-16 px-4 text-slate-500 space-y-2">
+                        <History size={36} className="mx-auto text-slate-600 opacity-50" />
+                        <p className="text-xs font-semibold">No historical rescue requests found.</p>
+                      </div>
+                    ) : (
+                      driverHistoryIncidents.map((inc) => {
+                        const isResolved = inc.status === 'Resolved';
+                        const isCancelled = inc.status === 'Cancelled';
+                        const mech = mechanics.find((m) => String(m.id) === String(inc.mechanicId));
+                        const totalFee = (Number(inc.baseTariff) || 1000) + Math.round((Number(inc.distanceKm) || 0) * 150) + 250;
+
+                        return (
+                          <div
+                            key={inc.id}
+                            className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3 hover:border-slate-700 transition-all shadow-md"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <span className="text-[10px] font-mono text-slate-500 block">#INV-{inc.id.slice(-6).toUpperCase()}</span>
+                                <h4 className="text-xs font-black text-orange-400">{inc.category}</h4>
+                                <span className="text-[10px] text-slate-400 block mt-0.5">
+                                  {new Date(inc.timestamp).toLocaleString('en-LK', { dateStyle: 'medium', timeStyle: 'short' })}
+                                </span>
+                              </div>
+                              <span
+                                className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${
+                                  isResolved
+                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                                    : isCancelled
+                                    ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                                    : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                                }`}
+                              >
+                                {inc.status}
+                              </span>
+                            </div>
+
+                            <div className="p-2.5 rounded-xl bg-slate-950/60 text-[11px] text-slate-300 space-y-1">
+                              <div>Garage: <strong className="text-white">{mech?.businessName || mech?.name || 'Verified Mobile Garage'}</strong></div>
+                              {inc.assignedEmployee && (
+                                <div className="text-[10px] text-slate-400">Technician: {inc.assignedEmployee.name} ({inc.assignedEmployee.role})</div>
+                              )}
+                              <div className="text-[10px] text-slate-400">Distance: {inc.distanceKm || 0} km</div>
+                            </div>
+
+                            <div className="flex justify-between items-center pt-1 border-t border-slate-800/60">
+                              <span className="text-xs font-black text-amber-400">LKR {totalFee.toLocaleString()}</span>
+                              <button
+                                onClick={() => {
+                                  setSelectedInvoiceIncident(inc);
+                                  setInvoiceModalOpen(true);
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition-all border border-slate-700 cursor-pointer"
+                              >
+                                <FileText size={13} className="text-orange-400" />
+                                <span>Invoice PDF</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* Official Invoice Modal */}
+          <InvoiceModal
+            isOpen={invoiceModalOpen}
+            onClose={() => setInvoiceModalOpen(false)}
+            incident={selectedInvoiceIncident}
+            mechanic={mechanics.find((m) => String(m.id) === String(selectedInvoiceIncident?.mechanicId))}
+          />
         </>
       )}
       <MechanicRobotChat userRole="driver" />

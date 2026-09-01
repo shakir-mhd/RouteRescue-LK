@@ -30,11 +30,15 @@ import {
   CheckCircle2,
   XCircle,
   Banknote,
+  Download,
+  Calendar,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs, SubscriptionPlan, DEFAULT_PLANS } from '@/utils/store';
 import { supabase } from '../../utils/supabase';
 import MechanicRobotChat from '../../components/MechanicRobotChat';
+import InvoiceModal from '../../components/InvoiceModal';
+import { generateIncidentInvoicePDF, generateGarageMonthlyReportPDF } from '../../utils/pdfGenerator';
 
 const GarageLocationPickerMap = dynamic(() => import('../../components/GarageLocationPickerInner'), {
   ssr: false,
@@ -104,6 +108,11 @@ export default function MechanicPortal() {
   const [incidents, setIncidents] = useSharedState<Incident[]>('routerescue_incidents', []);
   const [plans] = useSharedState<SubscriptionPlan[]>('routerescue_plans', DEFAULT_PLANS);
   const [currentMechanic, setCurrentMechanic] = useState<Mechanic | null>(null);
+  const [mechInvoiceModalOpen, setMechInvoiceModalOpen] = useState(false);
+  const [selectedMechInvoiceIncident, setSelectedMechInvoiceIncident] = useState<Incident | null>(null);
+  const [selectedReportMonth, setSelectedReportMonth] = useState<string>(
+    new Date().toLocaleString('en-LK', { month: 'long', year: 'numeric' })
+  );
 
   // Tab & Form State
   const [activeTab, setActiveTab] = useState<'dispatch' | 'roster' | 'history' | 'settings'>('dispatch');
@@ -1860,22 +1869,37 @@ export default function MechanicPortal() {
                       </p>
                     </div>
 
-                    {/* Category Dropdown */}
-                    <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
-                      <Filter size={14} className="text-slate-400" />
-                      <select
-                        value={historyCategoryFilter}
-                        onChange={(e) => setHistoryCategoryFilter(e.target.value)}
-                        className="bg-transparent text-slate-200 font-bold text-xs focus:outline-none cursor-pointer"
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => {
+                          if (currentMechanic) {
+                            generateGarageMonthlyReportPDF(currentMechanic, incidents, selectedReportMonth);
+                          }
+                        }}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs border border-emerald-400 shadow-md cursor-pointer transition-all active:scale-95"
+                        title="Download Monthly Operations & Revenue PDF Report"
                       >
-                        <option value="all" className="bg-slate-900">All Categories</option>
-                        <option value="Flat Tire" className="bg-slate-900">Flat Tire</option>
-                        <option value="Electrical/Won't Start" className="bg-slate-900">Electrical / Won't Start</option>
-                        <option value="Smoke/Overheating" className="bg-slate-900">Smoke / Overheating</option>
-                        <option value="Completely Stalled" className="bg-slate-900">Completely Stalled</option>
-                        <option value="Accident Assistance" className="bg-slate-900">Accident Assistance</option>
-                        <option value="Fuel/Battery" className="bg-slate-900">Fuel / Battery</option>
-                      </select>
+                        <Download size={14} />
+                        <span>Monthly Report (PDF)</span>
+                      </button>
+
+                      {/* Category Dropdown */}
+                      <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
+                        <Filter size={14} className="text-slate-400" />
+                        <select
+                          value={historyCategoryFilter}
+                          onChange={(e) => setHistoryCategoryFilter(e.target.value)}
+                          className="bg-transparent text-slate-200 font-bold text-xs focus:outline-none cursor-pointer"
+                        >
+                          <option value="all" className="bg-slate-900">All Categories</option>
+                          <option value="Flat Tire" className="bg-slate-900">Flat Tire</option>
+                          <option value="Electrical/Won't Start" className="bg-slate-900">Electrical / Won't Start</option>
+                          <option value="Smoke/Overheating" className="bg-slate-900">Smoke / Overheating</option>
+                          <option value="Completely Stalled" className="bg-slate-900">Completely Stalled</option>
+                          <option value="Accident Assistance" className="bg-slate-900">Accident Assistance</option>
+                          <option value="Fuel/Battery" className="bg-slate-900">Fuel / Battery</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
 
@@ -1988,13 +2012,26 @@ export default function MechanicPortal() {
                                 {new Date(inc.timestamp).toLocaleString()}
                               </td>
                               <td className="py-3">
-                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
-                                  inc.status === 'Resolved'
-                                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                                    : 'bg-red-500/20 text-red-400 border-red-500/30'
-                                }`}>
-                                  {inc.status === 'Resolved' ? 'Resolved' : `Cancelled (${inc.cancelledBy || 'System'})`}
-                                </span>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
+                                    inc.status === 'Resolved'
+                                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                      : 'bg-red-500/20 text-red-400 border-red-500/30'
+                                  }`}>
+                                    {inc.status === 'Resolved' ? 'Resolved' : `Cancelled (${inc.cancelledBy || 'System'})`}
+                                  </span>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedMechInvoiceIncident(inc);
+                                      setMechInvoiceModalOpen(true);
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-200 border border-slate-700 flex items-center gap-1 cursor-pointer transition-all"
+                                    title="View & Download PDF Invoice"
+                                  >
+                                    <FileText size={11} className="text-orange-400" />
+                                    <span>PDF Invoice</span>
+                                  </button>
+                                </div>
                                 {inc.status === 'Cancelled' && inc.cancellationReason && (
                                   <p className="text-[10px] text-red-300 mt-1 italic leading-tight">
                                     Reason: {inc.cancellationReason}
@@ -2342,6 +2379,12 @@ export default function MechanicPortal() {
           </div>
         </div>
       )}
+      <InvoiceModal
+        isOpen={mechInvoiceModalOpen}
+        onClose={() => setMechInvoiceModalOpen(false)}
+        incident={selectedMechInvoiceIncident}
+        mechanic={currentMechanic || mechanics.find((m) => String(m.id) === String(selectedMechInvoiceIncident?.mechanicId))}
+      />
       <MechanicRobotChat userRole="mechanic" />
     </div>
   );

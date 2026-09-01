@@ -7,12 +7,14 @@ import {
   ArrowLeft, ShieldAlert, Key, UserCheck, CreditCard, Map, Info, Star,
   Building2, Users, Settings, Eye, RefreshCw, X, AlertTriangle, FileText,
   Calendar, Trash2, CheckCircle, Phone, Clock, ShieldCheck, MapPin, ExternalLink, LogOut,
-  Search, Filter, CheckCircle2, XCircle, Banknote
+  Search, Filter, CheckCircle2, XCircle, Banknote, Download
 } from 'lucide-react';
 import { useSharedState, Incident, Mechanic, SEED_MECHANICS, DEFAULT_ADMIN_SETTINGS, AdminSettings, SubscriptionPlan, DEFAULT_PLANS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs } from '../../utils/store';
 import { supabase } from '../../utils/supabase';
 import dynamic from 'next/dynamic';
 import MechanicRobotChat from '../../components/MechanicRobotChat';
+import InvoiceModal from '../../components/InvoiceModal';
+import { generateAdminExecutiveReportPDF, generateIncidentInvoicePDF } from '../../utils/pdfGenerator';
 
 const MapInner = dynamic(() => import('../../components/MapInner'), {
   ssr: false,
@@ -46,6 +48,10 @@ export default function SuperAdminDashboard() {
 
   // Directory Modal Details
   const [selectedMechanicModal, setSelectedMechanicModal] = useState<Mechanic | null>(null);
+
+  // Invoice Modal State
+  const [adminInvoiceModalOpen, setAdminInvoiceModalOpen] = useState(false);
+  const [selectedAdminInvoiceIncident, setSelectedAdminInvoiceIncident] = useState<Incident | null>(null);
 
   // Synced Global States
   const [incidents, setIncidents] = useSharedState<Incident[]>('routerescue_incidents', []);
@@ -925,6 +931,17 @@ export default function SuperAdminDashboard() {
             </span>
           </div>
           <button
+            onClick={() => {
+              const currentMonthStr = new Date().toLocaleString('en-LK', { month: 'long', year: 'numeric' });
+              generateAdminExecutiveReportPDF(incidents, mechanics, currentMonthStr);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs border border-emerald-400 shadow-md cursor-pointer transition-all active:scale-95"
+            title="Download Monthly Platform Executive PDF Report"
+          >
+            <Download size={13} />
+            <span>Platform Report (PDF)</span>
+          </button>
+          <button
             onClick={handleAdminLogout}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-extrabold transition-all cursor-pointer"
           >
@@ -1291,10 +1308,23 @@ export default function SuperAdminDashboard() {
                             <td className="py-3 px-3 text-emerald-400 font-semibold">{garage ? (garage.businessName || garage.name) : 'Assigned Garage'}</td>
                             <td className="py-3 px-3 text-slate-400 text-[11px]">{new Date(inc.timestamp).toLocaleString()}</td>
                             <td className="py-3 px-3">
-                              <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border ${inc.status === 'Resolved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'
-                                }`}>
-                                {inc.status === 'Resolved' ? 'Resolved / Completed' : `Cancelled (${inc.cancelledBy || 'System'})`}
-                              </span>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border ${inc.status === 'Resolved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'
+                                  }`}>
+                                  {inc.status === 'Resolved' ? 'Resolved / Completed' : `Cancelled (${inc.cancelledBy || 'System'})`}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    setSelectedAdminInvoiceIncident(inc);
+                                    setAdminInvoiceModalOpen(true);
+                                  }}
+                                  className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-200 border border-slate-700 flex items-center gap-1 cursor-pointer transition-all"
+                                  title="View & Download Official PDF Invoice"
+                                >
+                                  <FileText size={11} className="text-orange-400" />
+                                  <span>PDF Invoice</span>
+                                </button>
+                              </div>
                               {inc.status === 'Cancelled' && inc.cancellationReason && (
                                 <p className="text-[10px] text-red-300 mt-1 italic leading-tight">
                                   Reason: {inc.cancellationReason}
@@ -2222,6 +2252,12 @@ export default function SuperAdminDashboard() {
           </>
         )}
       </AnimatePresence>
+      <InvoiceModal
+        isOpen={adminInvoiceModalOpen}
+        onClose={() => setAdminInvoiceModalOpen(false)}
+        incident={selectedAdminInvoiceIncident}
+        mechanic={mechanics.find((m) => String(m.id) === String(selectedAdminInvoiceIncident?.mechanicId))}
+      />
       <MechanicRobotChat userRole="admin" />
     </div>
   );
