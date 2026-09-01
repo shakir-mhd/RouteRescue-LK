@@ -30,6 +30,7 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
 
   useEffect(() => {
     if (isOpen) {
+      setError(null);
       scrollToBottom();
     }
   }, [messages, isOpen, isLoading]);
@@ -334,7 +335,7 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
               {error && (
                 <div className="p-3 rounded-2xl bg-red-950/40 border border-red-500/40 text-red-300 text-[11px] flex items-center gap-2">
                   <AlertCircle size={16} className="text-red-400 shrink-0" />
-                  <span>AI Connection Error: Please check API key or network.</span>
+                  <span>{error}</span>
                 </div>
               )}
 
