@@ -440,13 +440,25 @@ export default function MechanicPortal() {
     e.preventDefault();
     setFormError('');
 
-    if (!name || !businessName || !phone || !nic) {
-      setFormError('Please fill in all registration fields.');
+    if (!name.trim() || !businessName.trim() || !phone.trim() || !nic.trim()) {
+      setFormError('Please fill in all required registration fields (Name, Business Name, Mobile Phone, NIC).');
       return;
     }
 
-    if (!validateNIC(nic)) {
+    if (!validateNIC(nic.trim())) {
       setFormError('Invalid Sri Lankan NIC format (e.g., 901234567V or 199012345678).');
+      return;
+    }
+
+    // Smart Auto-Fix for common email typos missing '@' (e.g. shakirmohacc1gmail.com -> shakirmohacc1@gmail.com)
+    let cleanEmail = email.trim();
+    if (cleanEmail && !cleanEmail.includes('@')) {
+      cleanEmail = cleanEmail.replace(/([^@\s]+)(gmail\.com|yahoo\.com|outlook\.com|hotmail\.com|icloud\.com|live\.com)/i, '$1@$2');
+      setEmail(cleanEmail);
+    }
+
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setFormError('Invalid email address format. Please check your email (must contain "@" e.g., name@gmail.com).');
       return;
     }
 
@@ -454,7 +466,7 @@ export default function MechanicPortal() {
     const mechRadius = matchedPlan ? Number(matchedPlan.radius) : 5;
     const mechMaxCap = matchedPlan ? Number(matchedPlan.maxCapacity || 3) : 3;
 
-    const garageEmail = email.trim() || `${businessName.toLowerCase().replace(/[^a-z0-9]/g, '')}@routerescue.lk`;
+    const garageEmail = cleanEmail || `${businessName.toLowerCase().replace(/[^a-z0-9]/g, '')}@routerescue.lk`;
 
     const newMech: Mechanic = {
       id: `mech-${Date.now()}`,
@@ -1228,7 +1240,7 @@ export default function MechanicPortal() {
                 </div>
               </form>
             ) : (
-              <form onSubmit={handleRegister} className="space-y-3">
+              <form onSubmit={handleRegister} noValidate className="space-y-3">
                 <div>
                   <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
                     Owner Full Name
