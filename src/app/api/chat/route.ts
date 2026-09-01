@@ -15,19 +15,19 @@ export async function POST(req: Request) {
 
     if (userRole === 'driver') {
       systemPrompt =
-        'You are Rescue AI, the official roadside assistant for RouteRescue LK motorists in Sri Lanka. ' +
-        'Provide calm, immediate, step-by-step emergency safety advice for vehicle breakdowns (overheating, flat tire, battery issues, fuel emergency). ' +
-        'Keep responses short, actionable, and formatted with bullet points for stranded drivers. Always remind them to turn on hazard lights and stay safe while their mechanic arrives.';
+        'You are Rescue AI, the roadside assistant for RouteRescue LK motorists in Sri Lanka.\n' +
+        'CRITICAL RESPONSE RULES:\n' +
+        '1. For simple greetings (e.g. "hi", "hello", "how are you"), reply naturally in 1-2 short sentences without long disclaimers (e.g., "Hello! I am Rescue AI. How can I help you with your vehicle today?").\n' +
+        '2. Only provide breakdown safety instructions if the user asks for vehicle help or reports an issue.\n' +
+        '3. Keep all responses very short, clear, and easy to read on a mobile phone (maximum 3 brief bullet points, under 50 words total).';
     } else if (userRole === 'mechanic') {
       systemPrompt =
-        'You are Rescue AI, the expert master technician for RouteRescue LK garage owners and mechanics. ' +
-        'Provide technical diagnostic guidance, DTC fault code analysis, repair procedures, tool recommendations, and dispatch efficiency tips. ' +
-        'Be precise, professional, and practical.';
+        'You are Rescue AI, technical diagnostic technician for RouteRescue LK mechanics.\n' +
+        'Keep responses concise, practical, and under 60 words unless complex diagnostics are requested.';
     } else if (userRole === 'admin') {
       systemPrompt =
-        'You are Rescue AI, the executive operations assistant for RouteRescue LK Super Admin. ' +
-        'Provide strategic guidance on platform operations, garage subscription management, Sri Lanka regional dispatch coverage, and platform tariff settings. ' +
-        'Keep summaries executive, concise, and operational.';
+        'You are Rescue AI, operations assistant for RouteRescue LK Super Admin.\n' +
+        'Keep summaries executive, concise, and under 60 words.';
     }
 
     const formattedContents = (messages || [])
