@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useChat } from '@ai-sdk/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Send, Bot, User, Sparkles, RefreshCw, AlertCircle, ChevronDown, Wrench, Shield, Car
@@ -11,16 +10,19 @@ interface MechanicRobotChatProps {
   userRole: 'driver' | 'mechanic' | 'admin';
 }
 
+interface MessageItem {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
 export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const chatHelpers = useChat() as any;
-  const { messages, status, error, setMessages } = chatHelpers;
-  const sendMessage = chatHelpers.sendMessage || chatHelpers.append;
-
-  const isLoading = status === 'streaming' || status === 'submitted';
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -32,7 +34,7 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
     }
   }, [messages, isOpen, isLoading]);
 
-  const handleSend = (textToSend?: string) => {
+  const handleSend = async (textToSend?: string) => {
     const textToSubmit = textToSend !== undefined ? textToSend : inputText;
     if (!textToSubmit.trim() || isLoading) return;
 
@@ -41,11 +43,58 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
       setInputText('');
     }
 
-    if (typeof sendMessage === 'function') {
-      sendMessage(
-        { text: trimmed },
-        { body: { userRole } }
-      );
+    const userMsg: MessageItem = { id: `user-${Date.now()}`, role: 'user', content: trimmed };
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
+    setIsLoading(true);
+    setError(null);
+
+    const assistantMsgId = `assistant-${Date.now()}`;
+    setMessages((prev) => [...prev, { id: assistantMsgId, role: 'assistant', content: '' }]);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
+          userRole,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP error ${response.status}`);
+      }
+
+      if (!response.body) {
+        throw new Error('Streaming not supported by browser');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let accumulatedText = '';
+
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          const chunkText = decoder.decode(value, { stream: true });
+          accumulatedText += chunkText;
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMsgId ? { ...msg, content: accumulatedText } : msg
+            )
+          );
+        }
+      }
+    } catch (err: any) {
+      console.error('Rescue AI Chat fetch error:', err);
+      setError(err.message || 'Failed to connect to Rescue AI');
+      setMessages((prev) => prev.filter((msg) => msg.id !== assistantMsgId || msg.content.trim().length > 0));
+    } finally {
+      setIsLoading(false);
     }
   };
 
