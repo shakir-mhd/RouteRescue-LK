@@ -45,21 +45,21 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
     }
 
     const userMsg: MessageItem = { id: `user-${Date.now()}`, role: 'user', content: trimmed };
-    const validExisting = messages.filter((m) => m.content.trim().length > 0);
-    const updatedMessages = [...validExisting, userMsg];
-    setMessages(updatedMessages);
+    const assistantMsgId = `assistant-${Date.now()}`;
+    const assistantMsg: MessageItem = { id: assistantMsgId, role: 'assistant', content: '' };
+
+    const conversationHistory = [...messages.filter((m) => getMessageText(m).trim().length > 0), userMsg];
+
+    setMessages([...conversationHistory, assistantMsg]);
     setIsLoading(true);
     setError(null);
-
-    const assistantMsgId = `assistant-${Date.now()}`;
-    setMessages((prev) => [...prev, { id: assistantMsgId, role: 'assistant', content: '' }]);
 
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
+          messages: conversationHistory.map((m) => ({ role: m.role, content: getMessageText(m) })),
           userRole,
         }),
       });
@@ -69,47 +69,18 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
         throw new Error(errData.error || `HTTP error ${response.status}`);
       }
 
-      if (!response.body) {
-        throw new Error('Streaming not supported by browser');
+      const textReply = await response.text();
+      if (!textReply.trim()) {
+        throw new Error('No response received from Rescue AI');
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let done = false;
-      let accumulatedText = '';
-
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-        if (value) {
-          const chunkText = decoder.decode(value, { stream: true });
-          
-          let parsedChunk = '';
-          const lines = chunkText.split('\n');
-          for (const line of lines) {
-            if (line.startsWith('0:')) {
-              try {
-                parsedChunk += JSON.parse(line.slice(2));
-              } catch (e) {
-                parsedChunk += line.slice(2);
-              }
-            } else if (!line.startsWith('d:') && !line.startsWith('e:') && !line.startsWith('f:') && line.length > 0) {
-              parsedChunk += line;
-            }
-          }
-
-          accumulatedText += (parsedChunk !== '' ? parsedChunk : (chunkText.startsWith('0:') ? '' : chunkText));
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMsgId ? { ...msg, content: accumulatedText } : msg
-            )
-          );
-        }
-      }
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, content: textReply.trim() } : msg))
+      );
     } catch (err: any) {
       console.error('Rescue AI Chat fetch error:', err);
       setError(err.message || 'Failed to connect to Rescue AI');
-      setMessages((prev) => prev.filter((msg) => msg.id !== assistantMsgId || msg.content.trim().length > 0));
+      setMessages((prev) => prev.filter((msg) => msg.id !== assistantMsgId));
     } finally {
       setIsLoading(false);
     }
