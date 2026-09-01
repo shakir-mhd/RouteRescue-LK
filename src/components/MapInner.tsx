@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { getCancelledIncidentIds, getTierColorScheme, type TierColorScheme } from '../utils/store';
 
@@ -144,6 +144,15 @@ const createRegionCenterIcon = () => {
   });
 };
 
+function MapEventsHandler({ onLocationClick }: { onLocationClick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onLocationClick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
+
 function RecenterMap({ position, zoom }: { position: [number, number]; zoom: number }) {
   const map = useMap();
   const prevRef = useRef<{ lat: number; lng: number; zoom: number } | null>(null);
@@ -268,7 +277,7 @@ export default function MapInner({
       center={effectiveCenter}
       zoom={zoom}
       scrollWheelZoom={true}
-      className="w-full h-full z-10"
+      className="w-full h-full z-10 cursor-crosshair"
       zoomControl={false}
     >
       {/* High-Performance Watermark-Free Map Tiles */}
@@ -280,16 +289,29 @@ export default function MapInner({
       />
 
       <RecenterMap position={effectiveCenter} zoom={zoom} />
+      <MapEventsHandler onLocationClick={onReportLocationChange} />
 
       {/* Driver Vehicle Car Location Marker */}
-      <Marker position={userLocation} icon={createUserIcon()} ref={userMarkerRef}>
+      <Marker
+        position={userLocation}
+        icon={createUserIcon()}
+        ref={userMarkerRef}
+        draggable={true}
+        eventHandlers={{
+          dragend(e: any) {
+            const marker = e.target;
+            if (marker != null) {
+              const latLng = marker.getLatLng();
+              onReportLocationChange(latLng.lat, latLng.lng);
+            }
+          },
+        }}
+      >
         <Popup>
           <div className="text-xs p-1 text-slate-200">
-            <span className="font-bold text-cyan-400">
-              {userLocation[0] === 7.8731 ? '📍 Platform Central Operations Node' : '🚗 Your Vehicle GPS Location'}
-            </span>
+            <span className="font-bold text-cyan-400">🚗 Your Vehicle Location</span>
             <br />
-            <span className="text-[10px] text-slate-400">{userLocation[0].toFixed(4)}, {userLocation[1].toFixed(4)}</span>
+            <span className="text-[10px] text-slate-400">Tap anywhere on map or drag pin to adjust location</span>
           </div>
         </Popup>
       </Marker>

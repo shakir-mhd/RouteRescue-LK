@@ -209,16 +209,8 @@ export default function MotoristPortal() {
     isManualRegionRef.current = false;
     setIsBrowsingRegion(false);
 
-    // Immediately animate map view to user's location & update dropdown header
-    const currentLoc: [number, number] = [userLocation[0], userLocation[1]];
-    setMapCenter([currentLoc[0], currentLoc[1]]);
-    setReportLocation([currentLoc[0], currentLoc[1]]);
-    const nearest = findNearestCity(currentLoc);
-    setSelectedCity(nearest);
-    setMapZoom(15);
-    setGpsStatus(`Centered on ${nearest.name}`);
-
     if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      setGpsStatus('Requesting High-Accuracy GPS...');
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const coords: [number, number] = [position.coords.latitude, position.coords.longitude];
@@ -227,14 +219,21 @@ export default function MotoristPortal() {
           setReportLocation([coords[0], coords[1]]);
           const gpsNearest = findNearestCity(coords);
           setSelectedCity(gpsNearest);
-          setMapZoom(15);
+          setMapZoom(16);
           setGpsStatus(`GPS Active (${gpsNearest.name})`);
         },
         (error) => {
-          console.log('GPS Geolocation error', error);
-          setGpsStatus(`Centered on ${nearest.name}`);
+          console.warn('GPS Geolocation error', error);
+          const nearest = findNearestCity(userLocation);
+          setGpsStatus(`GPS Blocked - Centered on ${nearest.name}`);
+          alert(
+            'GPS Location access was not granted by browser.\n\n' +
+            'Tips to set your location:\n' +
+            '1. Tap your city/region from the top header dropdown.\n' +
+            '2. Tap anywhere on the map or drag the vehicle pin to set your exact breakdown location!'
+          );
         },
-        { enableHighAccuracy: true, timeout: 5000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     }
   };
@@ -1041,7 +1040,15 @@ export default function MotoristPortal() {
                 mechanics={mechanics.filter((m) => m.status === 'Approved')}
                 reportMode={reportMode}
                 reportLocation={reportLocation}
-                onReportLocationChange={(lat, lng) => setReportLocation([lat, lng])}
+                onReportLocationChange={(lat, lng) => {
+                  const coords: [number, number] = [lat, lng];
+                  setUserLocation(coords);
+                  setReportLocation(coords);
+                  setMapCenter(coords);
+                  const nearest = findNearestCity(coords);
+                  setSelectedCity(nearest);
+                  setGpsStatus(`Pinned at ${nearest.name}`);
+                }}
                 onRequestAssistance={() => {
                   setReportLocation(userLocation);
                   setReportMode(true);
