@@ -2,6 +2,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText } from 'ai';
 
 export const maxDuration = 30;
+export const dynamic = 'force-dynamic';
 
 const apiKey =
   process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
