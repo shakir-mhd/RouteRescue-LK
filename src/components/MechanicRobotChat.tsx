@@ -44,7 +44,8 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
     }
 
     const userMsg: MessageItem = { id: `user-${Date.now()}`, role: 'user', content: trimmed };
-    const updatedMessages = [...messages, userMsg];
+    const validExisting = messages.filter((m) => m.content.trim().length > 0);
+    const updatedMessages = [...validExisting, userMsg];
     setMessages(updatedMessages);
     setIsLoading(true);
     setError(null);

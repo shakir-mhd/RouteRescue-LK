@@ -30,10 +30,12 @@ export async function POST(req: Request) {
         'Keep summaries executive, concise, and operational.';
     }
 
-    const formattedContents = (messages || []).map((m: any) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content || '' }],
-    }));
+    const formattedContents = (messages || [])
+      .filter((m: any) => m && typeof m.content === 'string' && m.content.trim().length > 0)
+      .map((m: any) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content.trim() }],
+      }));
 
     let geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?key=${GEMINI_API_KEY}`,
