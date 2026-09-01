@@ -38,6 +38,7 @@ import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationReq
 import { supabase } from '../../utils/supabase';
 import MechanicRobotChat from '../../components/MechanicRobotChat';
 import InvoiceModal from '../../components/InvoiceModal';
+import ReportRangeModal from '../../components/ReportRangeModal';
 import { generateIncidentInvoicePDF, generateGarageMonthlyReportPDF } from '../../utils/pdfGenerator';
 
 const GarageLocationPickerMap = dynamic(() => import('../../components/GarageLocationPickerInner'), {
@@ -110,6 +111,7 @@ export default function MechanicPortal() {
   const [currentMechanic, setCurrentMechanic] = useState<Mechanic | null>(null);
   const [mechInvoiceModalOpen, setMechInvoiceModalOpen] = useState(false);
   const [selectedMechInvoiceIncident, setSelectedMechInvoiceIncident] = useState<Incident | null>(null);
+  const [reportRangeModalOpen, setReportRangeModalOpen] = useState(false);
   const [selectedReportMonth, setSelectedReportMonth] = useState<string>(
     new Date().toLocaleString('en-LK', { month: 'long', year: 'numeric' })
   );
@@ -1870,7 +1872,7 @@ export default function MechanicPortal() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      {/* Report Month Selector Dropdown */}
+                      {/* Clean Month Filter Dropdown (Past & Current Months Only) */}
                       <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs">
                         <Calendar size={13} className="text-amber-400" />
                         <select
@@ -1878,20 +1880,16 @@ export default function MechanicPortal() {
                           onChange={(e) => setSelectedReportMonth(e.target.value)}
                           className="bg-transparent text-slate-200 font-bold text-xs focus:outline-none cursor-pointer"
                         >
-                          <option value="August 2026" className="bg-slate-900">August 2026 (8/1 - 8/31)</option>
-                          <option value="September 2026" className="bg-slate-900">September 2026 (9/1 - 9/30)</option>
-                          <option value="October 2026" className="bg-slate-900">October 2026 (10/1 - 10/31)</option>
+                          <option value="August 2026" className="bg-slate-900">August 2026</option>
+                          <option value="September 2026" className="bg-slate-900">September 2026</option>
                         </select>
                       </div>
 
+                      {/* Monthly Report PDF Button -> Opens Interactive Date Range Confirmation Modal */}
                       <button
-                        onClick={() => {
-                          if (currentMechanic) {
-                            generateGarageMonthlyReportPDF(currentMechanic, incidents, selectedReportMonth);
-                          }
-                        }}
+                        onClick={() => setReportRangeModalOpen(true)}
                         className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs border border-emerald-400 shadow-md cursor-pointer transition-all active:scale-95"
-                        title="Download Monthly Operations & Revenue PDF Report for Selected Month"
+                        title="Select Date Range & Generate Monthly PDF Report"
                       >
                         <Download size={14} />
                         <span>Monthly Report (PDF)</span>
@@ -2398,6 +2396,16 @@ export default function MechanicPortal() {
         onClose={() => setMechInvoiceModalOpen(false)}
         incident={selectedMechInvoiceIncident}
         mechanic={currentMechanic || mechanics.find((m) => String(m.id) === String(selectedMechInvoiceIncident?.mechanicId))}
+      />
+      <ReportRangeModal
+        isOpen={reportRangeModalOpen}
+        onClose={() => setReportRangeModalOpen(false)}
+        availableMonths={['August 2026', 'September 2026']}
+        onConfirm={(month) => {
+          if (currentMechanic) {
+            generateGarageMonthlyReportPDF(currentMechanic, incidents, month);
+          }
+        }}
       />
       <MechanicRobotChat userRole="mechanic" />
     </div>

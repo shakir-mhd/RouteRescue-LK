@@ -14,6 +14,7 @@ import { supabase } from '../../utils/supabase';
 import dynamic from 'next/dynamic';
 import MechanicRobotChat from '../../components/MechanicRobotChat';
 import InvoiceModal from '../../components/InvoiceModal';
+import ReportRangeModal from '../../components/ReportRangeModal';
 import { generateAdminExecutiveReportPDF, generateIncidentInvoicePDF } from '../../utils/pdfGenerator';
 
 const MapInner = dynamic(() => import('../../components/MapInner'), {
@@ -52,6 +53,7 @@ export default function SuperAdminDashboard() {
   // Invoice Modal State
   const [adminInvoiceModalOpen, setAdminInvoiceModalOpen] = useState(false);
   const [selectedAdminInvoiceIncident, setSelectedAdminInvoiceIncident] = useState<Incident | null>(null);
+  const [adminReportRangeModalOpen, setAdminReportRangeModalOpen] = useState(false);
 
   // Synced Global States
   const [incidents, setIncidents] = useSharedState<Incident[]>('routerescue_incidents', []);
@@ -931,12 +933,9 @@ export default function SuperAdminDashboard() {
             </span>
           </div>
           <button
-            onClick={() => {
-              const currentMonthStr = selectedMonth !== 'All' ? selectedMonth : new Date().toLocaleString('en-LK', { month: 'long', year: 'numeric' });
-              generateAdminExecutiveReportPDF(incidents, mechanics, currentMonthStr);
-            }}
+            onClick={() => setAdminReportRangeModalOpen(true)}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs border border-emerald-400 shadow-md cursor-pointer transition-all active:scale-95"
-            title="Download Monthly Platform Executive PDF Report"
+            title="Select Date Range & Generate Executive Platform PDF Report"
           >
             <Download size={13} />
             <span>Platform Report (PDF)</span>
@@ -2257,6 +2256,14 @@ export default function SuperAdminDashboard() {
         onClose={() => setAdminInvoiceModalOpen(false)}
         incident={selectedAdminInvoiceIncident}
         mechanic={mechanics.find((m) => String(m.id) === String(selectedAdminInvoiceIncident?.mechanicId))}
+      />
+      <ReportRangeModal
+        isOpen={adminReportRangeModalOpen}
+        onClose={() => setAdminReportRangeModalOpen(false)}
+        availableMonths={['August 2026', 'September 2026']}
+        onConfirm={(month) => {
+          generateAdminExecutiveReportPDF(incidents, mechanics, month);
+        }}
       />
       <MechanicRobotChat userRole="admin" />
     </div>
