@@ -144,15 +144,6 @@ const createRegionCenterIcon = () => {
   });
 };
 
-function MapEventsHandler({ onLocationClick }: { onLocationClick: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      onLocationClick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
-
 function RecenterMap({ position, zoom }: { position: [number, number]; zoom: number }) {
   const map = useMap();
   const prevRef = useRef<{ lat: number; lng: number; zoom: number } | null>(null);
@@ -277,7 +268,7 @@ export default function MapInner({
       center={effectiveCenter}
       zoom={zoom}
       scrollWheelZoom={true}
-      className="w-full h-full z-10 cursor-crosshair"
+      className="w-full h-full z-10"
       zoomControl={false}
     >
       {/* High-Performance Watermark-Free Map Tiles */}
@@ -289,24 +280,9 @@ export default function MapInner({
       />
 
       <RecenterMap position={effectiveCenter} zoom={zoom} />
-      <MapEventsHandler onLocationClick={onReportLocationChange} />
 
       {/* Driver Vehicle Car Location Marker */}
-      <Marker
-        position={userLocation}
-        icon={createUserIcon()}
-        ref={userMarkerRef}
-        draggable={true}
-        eventHandlers={{
-          dragend(e: any) {
-            const marker = e.target;
-            if (marker != null) {
-              const latLng = marker.getLatLng();
-              onReportLocationChange(latLng.lat, latLng.lng);
-            }
-          },
-        }}
-      >
+      <Marker position={userLocation} icon={createUserIcon()} ref={userMarkerRef}>
         <Popup>
           <div className="text-xs p-1 text-slate-200">
             <span className="font-bold text-cyan-400">🚗 Your Vehicle Location</span>

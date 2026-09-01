@@ -1040,15 +1040,7 @@ export default function MotoristPortal() {
                 mechanics={mechanics.filter((m) => m.status === 'Approved')}
                 reportMode={reportMode}
                 reportLocation={reportLocation}
-                onReportLocationChange={(lat, lng) => {
-                  const coords: [number, number] = [lat, lng];
-                  setUserLocation(coords);
-                  setReportLocation(coords);
-                  setMapCenter(coords);
-                  const nearest = findNearestCity(coords);
-                  setSelectedCity(nearest);
-                  setGpsStatus(`Pinned at ${nearest.name}`);
-                }}
+                onReportLocationChange={(lat, lng) => setReportLocation([lat, lng])}
                 onRequestAssistance={() => {
                   setReportLocation(userLocation);
                   setReportMode(true);
