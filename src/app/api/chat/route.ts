@@ -1,17 +1,10 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { streamText } from 'ai';
-
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
-const apiKey =
+const GEMINI_API_KEY =
   process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
   process.env.GEMINI_API_KEY ||
   'AQ.Ab8RN6KLZdvhI7Ygn4ujj3DsXj-8Dd32dboH_2BUmfmgGJQSHA';
-
-const google = createGoogleGenerativeAI({
-  apiKey,
-});
 
 export async function POST(req: Request) {
   try {
@@ -37,13 +30,75 @@ export async function POST(req: Request) {
         'Keep summaries executive, concise, and operational.';
     }
 
-    const result = streamText({
-      model: google('gemini-1.5-flash'),
-      system: systemPrompt,
-      messages,
-    });
+    const formattedContents = (messages || []).map((m: any) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content || '' }],
+    }));
 
-    return result.toTextStreamResponse();
+    let geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: formattedContents,
+        }),
+      }
+    );
+
+    if (!geminiRes.ok) {
+      geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: formattedContents,
+          }),
+        }
+      );
+    }
+
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      console.error('Gemini REST API Error:', errText);
+      return new Response(
+        JSON.stringify({ error: 'Failed to communicate with Gemini API' }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    const rawText = await geminiRes.text();
+    let fullText = '';
+    try {
+      const parsed = JSON.parse(rawText);
+      if (Array.isArray(parsed)) {
+        for (const chunk of parsed) {
+          const chunkText = chunk.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          fullText += chunkText;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse Gemini response array:', e);
+    }
+
+    if (!fullText.trim()) {
+      fullText =
+        'I am Rescue AI, your roadside emergency assistant. Please turn on your hazard lights and stay safe. How can I assist with your vehicle issue right now?';
+    }
+
+    return new Response(fullText, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+      },
+    });
   } catch (err: any) {
     console.error('Rescue AI Route Error:', err);
     return new Response(
