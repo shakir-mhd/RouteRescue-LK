@@ -1870,6 +1870,20 @@ export default function MechanicPortal() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
+                      {/* Report Month Selector Dropdown */}
+                      <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs">
+                        <Calendar size={13} className="text-amber-400" />
+                        <select
+                          value={selectedReportMonth}
+                          onChange={(e) => setSelectedReportMonth(e.target.value)}
+                          className="bg-transparent text-slate-200 font-bold text-xs focus:outline-none cursor-pointer"
+                        >
+                          <option value="August 2026" className="bg-slate-900">August 2026 (8/1 - 8/31)</option>
+                          <option value="September 2026" className="bg-slate-900">September 2026 (9/1 - 9/30)</option>
+                          <option value="October 2026" className="bg-slate-900">October 2026 (10/1 - 10/31)</option>
+                        </select>
+                      </div>
+
                       <button
                         onClick={() => {
                           if (currentMechanic) {
@@ -1877,7 +1891,7 @@ export default function MechanicPortal() {
                           }
                         }}
                         className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs border border-emerald-400 shadow-md cursor-pointer transition-all active:scale-95"
-                        title="Download Monthly Operations & Revenue PDF Report"
+                        title="Download Monthly Operations & Revenue PDF Report for Selected Month"
                       >
                         <Download size={14} />
                         <span>Monthly Report (PDF)</span>

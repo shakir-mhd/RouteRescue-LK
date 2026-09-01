@@ -343,9 +343,25 @@ export function generateIncidentInvoicePDF(incident: any, mechanic?: any) {
  * 2. Generate Garage / Mechanic Monthly Operations & Earnings PDF Report
  */
 export function generateGarageMonthlyReportPDF(mechanic: any, incidents: any[], monthYearStr: string) {
-  const completedJobs = incidents.filter(
-    (i) => String(i.mechanicId) === String(mechanic.id) && i.status === 'Resolved'
-  );
+  const completedJobs = incidents.filter((i) => {
+    if (String(i.mechanicId) !== String(mechanic.id) || i.status !== 'Resolved') return false;
+    if (!monthYearStr || monthYearStr === 'All') return true;
+
+    try {
+      const dateObj = new Date(i.timestamp || Date.now());
+      if (isNaN(dateObj.getTime())) return true;
+
+      const formattedMonthLK = dateObj.toLocaleString('en-LK', { month: 'long', year: 'numeric' });
+      const formattedMonthUS = dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+      return (
+        formattedMonthLK.toLowerCase().trim() === monthYearStr.toLowerCase().trim() ||
+        formattedMonthUS.toLowerCase().trim() === monthYearStr.toLowerCase().trim()
+      );
+    } catch (e) {
+      return true;
+    }
+  });
 
   const totalGross = completedJobs.reduce((sum, i) => sum + (Number(i.baseTariff) || 1000) + Math.round((Number(i.distanceKm) || 0) * 150), 0);
   const platformFeeDeduction = Math.round(totalGross * 0.08); // 8% platform commission
@@ -456,10 +472,29 @@ export function generateGarageMonthlyReportPDF(mechanic: any, incidents: any[], 
  * 3. Generate Super Admin Platform Monthly Executive PDF Report
  */
 export function generateAdminExecutiveReportPDF(incidents: any[], mechanics: any[], monthYearStr: string) {
-  const totalIncidents = incidents.length;
-  const resolvedIncidents = incidents.filter((i) => i.status === 'Resolved');
-  const cancelledIncidents = incidents.filter((i) => i.status === 'Cancelled');
-  const activeIncidents = incidents.filter((i) => i.status !== 'Resolved' && i.status !== 'Cancelled');
+  const monthlyIncidents = incidents.filter((i) => {
+    if (!monthYearStr || monthYearStr === 'All') return true;
+
+    try {
+      const dateObj = new Date(i.timestamp || Date.now());
+      if (isNaN(dateObj.getTime())) return true;
+
+      const formattedMonthLK = dateObj.toLocaleString('en-LK', { month: 'long', year: 'numeric' });
+      const formattedMonthUS = dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+      return (
+        formattedMonthLK.toLowerCase().trim() === monthYearStr.toLowerCase().trim() ||
+        formattedMonthUS.toLowerCase().trim() === monthYearStr.toLowerCase().trim()
+      );
+    } catch (e) {
+      return true;
+    }
+  });
+
+  const totalIncidents = monthlyIncidents.length;
+  const resolvedIncidents = monthlyIncidents.filter((i) => i.status === 'Resolved');
+  const cancelledIncidents = monthlyIncidents.filter((i) => i.status === 'Cancelled');
+  const activeIncidents = monthlyIncidents.filter((i) => i.status !== 'Resolved' && i.status !== 'Cancelled');
 
   const totalGrossRevenue = resolvedIncidents.reduce(
     (sum, i) => sum + (Number(i.baseTariff) || 1000) + Math.round((Number(i.distanceKm) || 0) * 150) + 250,

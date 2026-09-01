@@ -932,7 +932,7 @@ export default function SuperAdminDashboard() {
           </div>
           <button
             onClick={() => {
-              const currentMonthStr = new Date().toLocaleString('en-LK', { month: 'long', year: 'numeric' });
+              const currentMonthStr = selectedMonth !== 'All' ? selectedMonth : new Date().toLocaleString('en-LK', { month: 'long', year: 'numeric' });
               generateAdminExecutiveReportPDF(incidents, mechanics, currentMonthStr);
             }}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs border border-emerald-400 shadow-md cursor-pointer transition-all active:scale-95"
