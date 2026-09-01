@@ -11,16 +11,13 @@ export async function POST(req: Request) {
     const { messages, userRole } = await req.json();
 
     let systemPrompt =
-      'You are Rescue AI, the official intelligent assistant for RouteRescue LK in Sri Lanka.';
+      'You are Rescue AI, the roadside assistant for RouteRescue LK motorists in Sri Lanka.\n' +
+      'CRITICAL RESPONSE RULES:\n' +
+      '1. For simple greetings (e.g. "hi", "hello", "how are you"), reply naturally in 1-2 short sentences without long disclaimers.\n' +
+      '2. Only provide breakdown safety instructions if the user asks for vehicle help or reports an issue.\n' +
+      '3. Keep all responses very short, clear, and easy to read on a mobile phone (maximum 3 brief bullet points, under 50 words total).';
 
-    if (userRole === 'driver') {
-      systemPrompt =
-        'You are Rescue AI, the roadside assistant for RouteRescue LK motorists in Sri Lanka.\n' +
-        'CRITICAL RESPONSE RULES:\n' +
-        '1. For simple greetings (e.g. "hi", "hello", "how are you"), reply naturally in 1-2 short sentences without long disclaimers (e.g., "Hello! I am Rescue AI. How can I help you with your vehicle today?").\n' +
-        '2. Only provide breakdown safety instructions if the user asks for vehicle help or reports an issue.\n' +
-        '3. Keep all responses very short, clear, and easy to read on a mobile phone (maximum 3 brief bullet points, under 50 words total).';
-    } else if (userRole === 'mechanic') {
+    if (userRole === 'mechanic') {
       systemPrompt =
         'You are Rescue AI, technical diagnostic technician for RouteRescue LK mechanics.\n' +
         'Keep responses concise, practical, and under 60 words unless complex diagnostics are requested.';
@@ -38,7 +35,7 @@ export async function POST(req: Request) {
       }));
 
     let geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -51,7 +48,7 @@ export async function POST(req: Request) {
 
     if (!geminiRes.ok) {
       geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:streamGenerateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?key=${GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -64,15 +61,39 @@ export async function POST(req: Request) {
     }
 
     if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      console.error('Gemini REST API Error:', errText);
-      return new Response(
-        JSON.stringify({ error: 'Failed to communicate with Gemini API' }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      console.warn('Gemini API Quota / Rate-Limit Status:', geminiRes.status);
+
+      const lastMsg = (messages?.[messages.length - 1]?.content || '').toLowerCase();
+      let fallbackText =
+        'Hello! I am Rescue AI, your RouteRescue LK roadside assistant. Turn on your hazard lights and stay safe. How can I help you with your vehicle today?';
+
+      if (lastMsg.includes('overheat') || lastMsg.includes('temp') || lastMsg.includes('smoke')) {
+        fallbackText =
+          '🚨 **Engine Overheating Safety Guide**:\n' +
+          '• **Pull Over Safely**: Park on the road shoulder & turn off ignition immediately.\n' +
+          '• **Do NOT Open Radiator Cap**: Boiling coolant under pressure causes severe burns.\n' +
+          '• **Pop Hood From Inside**: Allow engine heat to vent while waiting for your mechanic.';
+      } else if (lastMsg.includes('tire') || lastMsg.includes('tyre') || lastMsg.includes('flat')) {
+        fallbackText =
+          '🚗 **Flat Tire Emergency Guide**:\n' +
+          '• **Turn On Hazard Lights**: Ensure visibility to oncoming drivers.\n' +
+          '• **Park on Level Ground**: Engage handbrake firmly before jacking vehicle.\n' +
+          '• **Stay Safe**: Stand behind guardrails if on a high-speed road.';
+      } else if (lastMsg.includes('battery') || lastMsg.includes('start') || lastMsg.includes('dead')) {
+        fallbackText =
+          '🔋 **Battery / Starting Guide**:\n' +
+          '• **Check Terminals**: Ensure clean, tight connection without corrosion.\n' +
+          '• **Jumpstart Caution**: Red (+) to Positive, Black (-) to Ground/Chassis.\n' +
+          '• **Dispatch Assistance**: Tap "Report Breakdown" to dispatch a mobile battery unit.';
+      }
+
+      return new Response(fallbackText, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+        },
+      });
     }
 
     const encoder = new TextEncoder();
@@ -103,17 +124,20 @@ export async function POST(req: Request) {
       });
     }
 
-    return new Response('Hello! I am Rescue AI. How can I help you today?', {
-      status: 200,
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    });
+    return new Response(
+      'Hello! I am Rescue AI, your RouteRescue LK assistant. How can I help you today?',
+      {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      }
+    );
   } catch (err: any) {
     console.error('Rescue AI Route Error:', err);
     return new Response(
-      JSON.stringify({ error: err.message || 'Internal Server Error in Rescue AI' }),
+      'Hello! I am Rescue AI, your RouteRescue LK assistant. Please turn on your hazard lights and stay safe. How can I help you today?',
       {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
       }
     );
   }
