@@ -16,7 +16,10 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { messages, status, sendMessage, error, setMessages } = useChat();
+  const chatHelpers = useChat();
+  const { messages, status, error, setMessages } = chatHelpers;
+  const sendMessage = (chatHelpers as any).sendMessage;
+  const append = (chatHelpers as any).append;
 
   const isLoading = status === 'streaming' || status === 'submitted';
 
@@ -30,17 +33,29 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
     }
   }, [messages, isOpen, isLoading]);
 
-  const handleSend = (textToSend?: string) => {
+  const handleSend = async (textToSend?: string) => {
     const textToSubmit = textToSend !== undefined ? textToSend : inputText;
     if (!textToSubmit.trim() || isLoading) return;
 
-    sendMessage(
-      { text: textToSubmit.trim() },
-      { body: { userRole } }
-    );
-
+    const trimmed = textToSubmit.trim();
     if (textToSend === undefined) {
       setInputText('');
+    }
+
+    try {
+      if (typeof sendMessage === 'function') {
+        sendMessage(
+          { text: trimmed },
+          { body: { userRole } }
+        );
+      } else if (typeof append === 'function') {
+        await append(
+          { role: 'user', content: trimmed },
+          { body: { userRole } }
+        );
+      }
+    } catch (e) {
+      console.error('Send message error:', e);
     }
   };
 
@@ -54,8 +69,10 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
     if (Array.isArray(m.parts)) {
       return m.parts
         .map((p: any) => (p.type === 'text' ? p.text : p.text || ''))
+        .filter(Boolean)
         .join('');
     }
+    if (m.text) return String(m.text);
     return String(m.content || '');
   };
 
