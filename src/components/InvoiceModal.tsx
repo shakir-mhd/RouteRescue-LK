@@ -48,7 +48,7 @@ export default function InvoiceModal({ isOpen, onClose, incident, mechanic }: In
               </div>
               <div>
                 <h3 className="text-sm font-black text-white tracking-wide">Breakdown Repair Invoice</h3>
-                <span className="text-[10px] text-slate-400 font-mono">#INV-{incident.id.slice(-6).toUpperCase()}</span>
+                <span className="text-[10px] text-slate-400 font-mono">#INV-{String(incident.id || '').slice(-6).toUpperCase()}</span>
               </div>
             </div>
             <button

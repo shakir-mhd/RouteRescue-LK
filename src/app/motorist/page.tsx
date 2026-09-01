@@ -700,6 +700,7 @@ export default function MotoristPortal() {
   const isIncidentActive = activeIncident !== null;
 
   const driverHistoryIncidents = incidents.filter((inc) => {
+    if (!inc || !inc.id) return false;
     const isDriverMatch =
       !inc.driverPhone ||
       !phone ||
@@ -715,8 +716,8 @@ export default function MotoristPortal() {
     if (!historySearchQuery.trim()) return true;
     const q = historySearchQuery.toLowerCase();
     return (
-      inc.id.toLowerCase().includes(q) ||
-      inc.category.toLowerCase().includes(q) ||
+      (inc.id && inc.id.toLowerCase().includes(q)) ||
+      (inc.category && inc.category.toLowerCase().includes(q)) ||
       (inc.driverName && inc.driverName.toLowerCase().includes(q))
     );
   });
