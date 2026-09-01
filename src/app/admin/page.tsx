@@ -519,6 +519,25 @@ export default function SuperAdminDashboard() {
         return matches ? { ...m, status: 'Rejected' as const } : m;
       })
     );
+    if (typeof window !== 'undefined') {
+      const storedSessionStr = localStorage.getItem('mechanic_session');
+      if (storedSessionStr) {
+        try {
+          const sessionObj = JSON.parse(storedSessionStr);
+          const isMatchingSession =
+            String(sessionObj.id) === String(id) ||
+            (vendorToReject && (
+              (sessionObj.nic && vendorToReject.nic && String(sessionObj.nic).trim().toLowerCase() === String(vendorToReject.nic).trim().toLowerCase()) ||
+              (sessionObj.phone && vendorToReject.phone && String(sessionObj.phone).trim() === String(vendorToReject.phone).trim()) ||
+              (sessionObj.businessName && vendorToReject.businessName && String(sessionObj.businessName).trim().toLowerCase() === String(vendorToReject.businessName).trim().toLowerCase())
+            ));
+          if (isMatchingSession) {
+            localStorage.setItem('mechanic_session', JSON.stringify({ ...sessionObj, status: 'Rejected' }));
+            window.dispatchEvent(new Event('local-storage-sync'));
+          }
+        } catch (e) {}
+      }
+    }
 
     try {
       const targetId = vendorToReject ? String(vendorToReject.id) : String(id);

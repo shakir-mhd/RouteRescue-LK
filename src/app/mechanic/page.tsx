@@ -1031,7 +1031,36 @@ export default function MechanicPortal() {
       {/* Main Content Router */}
       <main className="max-w-5xl w-full mx-auto flex-grow flex flex-col">
         {currentMechanic && currentMechanic.status !== 'Approved' ? (
-          currentMechanic.status === 'Blocked' || currentMechanic.status === 'Revoked' ? (
+          currentMechanic.status === 'Rejected' ? (
+            <div className="max-w-md w-full mx-auto glass-panel p-6 rounded-3xl border-red-500/40 bg-red-950/30 text-center my-auto shadow-2xl">
+              <div className="h-16 w-16 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center mx-auto mb-3 text-3xl">
+                🚫
+              </div>
+              <h2 className="text-xl font-black text-red-400 mb-1">Registration Rejected by Admin</h2>
+              <span className="inline-block px-3 py-1 rounded-full text-[10px] font-extrabold uppercase bg-red-500/20 text-red-300 border border-red-500/40 mb-4">
+                🔴 Access Denied
+              </span>
+              <p className="text-xs text-slate-300 leading-relaxed mb-4">
+                Your garage registration for <span className="font-bold text-slate-100">{currentMechanic.businessName || currentMechanic.name}</span> (NIC: <span className="font-mono text-slate-200">{currentMechanic.nic}</span>) was reviewed and <span className="font-bold text-red-400">REJECTED</span> by Super Admin.
+              </p>
+              <div className="bg-slate-900/90 p-4 rounded-2xl border border-red-500/30 text-[11px] text-slate-400 mb-5 text-left space-y-2">
+                <div className="flex justify-between border-b border-slate-800 pb-1.5">
+                  <span>Audit Status:</span>
+                  <span className="font-bold text-red-400 uppercase tracking-wider">REJECTED BY ADMIN</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Registered Mobile:</span>
+                  <span className="font-mono text-slate-200">{currentMechanic.phone}</span>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-bold transition-all cursor-pointer"
+              >
+                Return to Login / Registration
+              </button>
+            </div>
+          ) : currentMechanic.status === 'Blocked' || currentMechanic.status === 'Revoked' ? (
             <div className="max-w-md w-full mx-auto glass-panel p-6 rounded-3xl border-red-500/40 bg-red-950/30 text-center my-auto shadow-2xl">
               <div className="h-16 w-16 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center mx-auto mb-3 text-3xl animate-bounce">
                 🚫
@@ -1099,49 +1128,41 @@ export default function MechanicPortal() {
               </p>
             <div className="flex gap-3">
               <button
-                onClick={() => {
-                  const target = currentMechanic;
-                  if (!target) return;
+                onClick={async () => {
+                  if (!currentMechanic) return;
+                  try {
+                    const { data } = await supabase
+                      .from('mechanics')
+                      .select('*')
+                      .or(`id.eq.${currentMechanic.id},phone.eq.${currentMechanic.phone},nic.eq.${currentMechanic.nic}`)
+                      .maybeSingle();
 
-                  let latestList = mechanics;
-                  if (typeof window !== 'undefined') {
-                    const freshStorage = localStorage.getItem('routerescue_mechanics');
-                    if (freshStorage) {
-                      try {
-                        latestList = JSON.parse(freshStorage);
-                      } catch (e) {}
+                    if (data && data.status) {
+                      const updatedStatus = data.status;
+                      const updatedObj: Mechanic = {
+                        ...currentMechanic,
+                        ...data,
+                        status: updatedStatus as any,
+                        businessName: String(data.business_name || data.businessName || currentMechanic.businessName),
+                      };
+                      setCurrentMechanic(updatedObj);
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('mechanic_session', JSON.stringify(updatedObj));
+                      }
+
+                      if (updatedStatus === 'Approved') {
+                        alert('🎉 Approval Verified!\n\nSuper Admin has verified and approved your garage registration. Unlocking your dashboard now!');
+                      } else if (updatedStatus === 'Rejected') {
+                        alert('🚫 Audit Status: REJECTED\n\nSuper Admin has rejected this garage registration. Access denied.');
+                      } else {
+                        alert('⏳ Audit Status: PENDING\n\nYour registration is still undergoing verification in the Super Admin queue. Please check back shortly.');
+                      }
+                      return;
                     }
+                  } catch (e) {
+                    console.error(e);
                   }
-
-                  const matchedRecord = latestList.find(
-                    (m) =>
-                      String(m.id) === String(target.id) ||
-                      (m.phone && target.phone && String(m.phone).trim() === String(target.phone).trim()) ||
-                      (m.nic && target.nic && String(m.nic).trim().toLowerCase() === String(target.nic).trim().toLowerCase()) ||
-                      (m.businessName && target.businessName && String(m.businessName).trim().toLowerCase() === String(target.businessName).trim().toLowerCase())
-                  );
-
-                  const approvedObj: Mechanic = {
-                    ...(matchedRecord || target),
-                    status: 'Approved',
-                  };
-
-                  setCurrentMechanic(approvedObj);
-
-                  const updatedMechanicsList = mechanics.map((m) =>
-                    String(m.id) === String(approvedObj.id) ||
-                    (m.nic && approvedObj.nic && m.nic === approvedObj.nic) ||
-                    (m.phone && approvedObj.phone && m.phone === approvedObj.phone)
-                      ? approvedObj
-                      : m
-                  );
-                  setMechanics(updatedMechanicsList);
-
-                  if (typeof window !== 'undefined') {
-                    localStorage.setItem('mechanic_session', JSON.stringify(approvedObj));
-                  }
-
-                  alert('🎉 Account Verification Confirmed!\n\nSuper Admin approval verified. Unlocking your garage dashboard now!');
+                  alert('⏳ Audit Status: PENDING\n\nYour registration is undergoing verification in the Super Admin queue. Please check back shortly.');
                 }}
                 className="flex-1 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs transition-all cursor-pointer shadow-lg"
               >
