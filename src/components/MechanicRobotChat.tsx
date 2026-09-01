@@ -282,6 +282,9 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
               {/* MESSAGE HISTORY */}
               {messages.map((m: any) => {
                 const text = getMessageText(m);
+                if (m.role === 'assistant' && !text.trim()) {
+                  return null;
+                }
                 return (
                   <div
                     key={m.id}

@@ -75,31 +75,37 @@ export async function POST(req: Request) {
       );
     }
 
-    const rawText = await geminiRes.text();
-    let fullText = '';
-    try {
-      const parsed = JSON.parse(rawText);
-      if (Array.isArray(parsed)) {
-        for (const chunk of parsed) {
-          const chunkText = chunk.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          fullText += chunkText;
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    const transformStream = new TransformStream({
+      transform(chunk, controller) {
+        const textChunk = decoder.decode(chunk, { stream: true });
+        const matches = [...textChunk.matchAll(/"text":\s*"((?:[^"\\]|\\.)*)"/g)];
+        for (const m of matches) {
+          try {
+            const parsed = JSON.parse(`"${m[1]}"`);
+            if (parsed) {
+              controller.enqueue(encoder.encode(parsed));
+            }
+          } catch (e) {}
         }
-      }
-    } catch (e) {
-      console.error('Failed to parse Gemini response array:', e);
-    }
-
-    if (!fullText.trim()) {
-      fullText =
-        'I am Rescue AI, your roadside emergency assistant. Please turn on your hazard lights and stay safe. How can I assist with your vehicle issue right now?';
-    }
-
-    return new Response(fullText, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-cache, no-transform',
       },
+    });
+
+    if (geminiRes.body) {
+      return new Response(geminiRes.body.pipeThrough(transformStream), {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+        },
+      });
+    }
+
+    return new Response('Hello! I am Rescue AI. How can I help you today?', {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
   } catch (err: any) {
     console.error('Rescue AI Route Error:', err);
