@@ -9,15 +9,12 @@ function formatLKR(amount: number): string {
   }).format(amount);
 }
 
-// RouteRescue LK SVG Logo Data URI for High-Resolution PDF Header
-const ROUTERESCUE_LOGO_SVG = `
-<svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="46" fill="#0F172A" stroke="#FF5722" stroke-width="4"/>
-  <path d="M30 68L50 24L70 68" stroke="#FF5722" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="50" cy="54" r="7" fill="#00E5FF"/>
-  <path d="M22 76H78" stroke="#00E5FF" stroke-width="4" stroke-linecap="round"/>
-</svg>
-`;
+// RouteRescue LK Official Logo HTML for High-Resolution PDF Header
+function getRouteRescueLogoHtml(): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const logoUrl = origin ? `${origin}/logo.png` : '/logo.png';
+  return `<img src="${logoUrl}" alt="RouteRescue LK Logo" style="height: 60px; width: auto; max-width: 120px; object-fit: contain; display: block;" />`;
+}
 
 /**
  * Trigger clean branded browser print-to-PDF window
@@ -221,7 +218,7 @@ export function generateIncidentInvoicePDF(incident: any, mechanic?: any) {
     <table class="header-table">
       <tr>
         <td style="width: 70px; vertical-align: top;">
-          ${ROUTERESCUE_LOGO_SVG}
+          ${getRouteRescueLogoHtml()}
         </td>
         <td style="vertical-align: top; padding-left: 12px;">
           <div class="brand-title">RouteRescue LK</div>
@@ -358,7 +355,7 @@ export function generateGarageMonthlyReportPDF(mechanic: any, incidents: any[], 
     <table class="header-table">
       <tr>
         <td style="width: 70px; vertical-align: top;">
-          ${ROUTERESCUE_LOGO_SVG}
+          ${getRouteRescueLogoHtml()}
         </td>
         <td style="vertical-align: top; padding-left: 12px;">
           <div class="brand-title">RouteRescue LK</div>
@@ -474,7 +471,7 @@ export function generateAdminExecutiveReportPDF(incidents: any[], mechanics: any
     <table class="header-table">
       <tr>
         <td style="width: 70px; vertical-align: top;">
-          ${ROUTERESCUE_LOGO_SVG}
+          ${getRouteRescueLogoHtml()}
         </td>
         <td style="vertical-align: top; padding-left: 12px;">
           <div class="brand-title">RouteRescue LK</div>

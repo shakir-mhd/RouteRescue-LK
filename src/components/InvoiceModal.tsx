@@ -42,9 +42,9 @@ export default function InvoiceModal({ isOpen, onClose, incident, mechanic }: In
         >
           {/* Header Bar */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/60">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
-                <FileText size={20} />
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0">
+                <img src="/logo.png" alt="RouteRescue LK Logo" className="h-8 w-auto object-contain" />
               </div>
               <div>
                 <h3 className="text-sm font-black text-white tracking-wide">Breakdown Repair Invoice</h3>
