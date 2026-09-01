@@ -69,14 +69,28 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
         throw new Error(errData.error || `HTTP error ${response.status}`);
       }
 
-      const textReply = await response.text();
-      if (!textReply.trim()) {
-        throw new Error('No response received from Rescue AI');
+      if (!response.body) {
+        throw new Error('Streaming not supported by browser');
       }
 
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, content: textReply.trim() } : msg))
-      );
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let accumulatedText = '';
+
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          const chunkText = decoder.decode(value, { stream: true });
+          accumulatedText += chunkText;
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMsgId ? { ...msg, content: accumulatedText } : msg
+            )
+          );
+        }
+      }
     } catch (err: any) {
       console.error('Rescue AI Chat fetch error:', err);
       setError(err.message || 'Failed to connect to Rescue AI');
