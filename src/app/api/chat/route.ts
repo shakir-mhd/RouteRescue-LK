@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       'CRITICAL RESPONSE RULES:\n' +
       '1. For simple greetings (e.g. "hi", "hello", "how are you"), reply naturally in 1-2 short sentences without long disclaimers.\n' +
       '2. Only provide breakdown safety instructions if the user asks for vehicle help or reports an issue.\n' +
-      '3. Keep all responses very short, clear, and easy to read on a mobile phone (maximum 3 brief bullet points, under 50 words total).';
+      '3. Keep all responses clear, complete, and easy to read on a mobile phone (maximum 3 brief bullet points, under 50 words total).';
 
     if (userRole === 'mechanic') {
       systemPrompt =
@@ -34,8 +34,11 @@ export async function POST(req: Request) {
         parts: [{ text: m.content.trim() }],
       }));
 
+    let fullText = '';
+
+    // Primary: gemini-3.6-flash
     let geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -46,9 +49,13 @@ export async function POST(req: Request) {
       }
     );
 
-    if (!geminiRes.ok) {
+    if (geminiRes.ok) {
+      const data = await geminiRes.json();
+      fullText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    } else {
+      // Fallback: gemini-3.5-flash
       geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -58,83 +65,49 @@ export async function POST(req: Request) {
           }),
         }
       );
+      if (geminiRes.ok) {
+        const data = await geminiRes.json();
+        fullText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      }
     }
 
-    if (!geminiRes.ok) {
-      console.warn('Gemini API Quota / Rate-Limit Status:', geminiRes.status);
-
+    if (!fullText.trim()) {
       const lastMsg = (messages?.[messages.length - 1]?.content || '').toLowerCase();
-      let fallbackText =
-        'Hello! I am Rescue AI, your RouteRescue LK roadside assistant. Turn on your hazard lights and stay safe. How can I help you with your vehicle today?';
+      fullText =
+        'Hello! I am Rescue AI, your RouteRescue LK roadside assistant. How can I help you on the road today?';
 
       if (lastMsg.includes('overheat') || lastMsg.includes('temp') || lastMsg.includes('smoke')) {
-        fallbackText =
+        fullText =
           '🚨 **Engine Overheating Safety Guide**:\n' +
           '• **Pull Over Safely**: Park on the road shoulder & turn off ignition immediately.\n' +
           '• **Do NOT Open Radiator Cap**: Boiling coolant under pressure causes severe burns.\n' +
           '• **Pop Hood From Inside**: Allow engine heat to vent while waiting for your mechanic.';
       } else if (lastMsg.includes('tire') || lastMsg.includes('tyre') || lastMsg.includes('flat')) {
-        fallbackText =
+        fullText =
           '🚗 **Flat Tire Emergency Guide**:\n' +
           '• **Turn On Hazard Lights**: Ensure visibility to oncoming drivers.\n' +
           '• **Park on Level Ground**: Engage handbrake firmly before jacking vehicle.\n' +
           '• **Stay Safe**: Stand behind guardrails if on a high-speed road.';
       } else if (lastMsg.includes('battery') || lastMsg.includes('start') || lastMsg.includes('dead')) {
-        fallbackText =
+        fullText =
           '🔋 **Battery / Starting Guide**:\n' +
           '• **Check Terminals**: Ensure clean, tight connection without corrosion.\n' +
           '• **Jumpstart Caution**: Red (+) to Positive, Black (-) to Ground/Chassis.\n' +
           '• **Dispatch Assistance**: Tap "Report Breakdown" to dispatch a mobile battery unit.';
       }
-
-      return new Response(fallbackText, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Cache-Control': 'no-cache, no-transform',
-        },
-      });
     }
 
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-
-    const transformStream = new TransformStream({
-      transform(chunk, controller) {
-        const textChunk = decoder.decode(chunk, { stream: true });
-        const matches = [...textChunk.matchAll(/"text":\s*"((?:[^"\\]|\\.)*)"/g)];
-        for (const m of matches) {
-          try {
-            const parsed = JSON.parse(`"${m[1]}"`);
-            if (parsed) {
-              controller.enqueue(encoder.encode(parsed));
-            }
-          } catch (e) {}
-        }
+    return new Response(fullText, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
       },
     });
-
-    if (geminiRes.body) {
-      return new Response(geminiRes.body.pipeThrough(transformStream), {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Cache-Control': 'no-cache, no-transform',
-        },
-      });
-    }
-
-    return new Response(
-      'Hello! I am Rescue AI, your RouteRescue LK assistant. How can I help you today?',
-      {
-        status: 200,
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-      }
-    );
   } catch (err: any) {
     console.error('Rescue AI Route Error:', err);
     return new Response(
-      'Hello! I am Rescue AI, your RouteRescue LK assistant. Please turn on your hazard lights and stay safe. How can I help you today?',
+      'Hello! I am Rescue AI, your RouteRescue LK assistant. How can I help you today?',
       {
         status: 200,
         headers: { 'Content-Type': 'text/plain; charset=utf-8' },
