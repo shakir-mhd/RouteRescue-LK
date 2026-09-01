@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 const GEMINI_API_KEY =
   process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
   process.env.GEMINI_API_KEY ||
-  'AQ.Ab8RN6KLZdvhI7Ygn4ujj3DsXj-8Dd32dboH_2BUmfmgGJQSHA';
+  'AQ.Ab8RN6L0R5YjJcrJinWW004z3i9IpB57Vt52A3hhTXpCBam-GA';
 
 export async function POST(req: Request) {
   try {
