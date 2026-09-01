@@ -81,7 +81,22 @@ export default function MechanicRobotChat({ userRole }: MechanicRobotChatProps) 
         done = doneReading;
         if (value) {
           const chunkText = decoder.decode(value, { stream: true });
-          accumulatedText += chunkText;
+          
+          let parsedChunk = '';
+          const lines = chunkText.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('0:')) {
+              try {
+                parsedChunk += JSON.parse(line.slice(2));
+              } catch (e) {
+                parsedChunk += line.slice(2);
+              }
+            } else if (!line.startsWith('d:') && !line.startsWith('e:') && !line.startsWith('f:') && line.length > 0) {
+              parsedChunk += line;
+            }
+          }
+
+          accumulatedText += (parsedChunk !== '' ? parsedChunk : (chunkText.startsWith('0:') ? '' : chunkText));
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === assistantMsgId ? { ...msg, content: accumulatedText } : msg
