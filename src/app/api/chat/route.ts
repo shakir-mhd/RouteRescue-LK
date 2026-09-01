@@ -75,37 +75,30 @@ export async function POST(req: Request) {
       );
     }
 
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-
-    const transformStream = new TransformStream({
-      transform(chunk, controller) {
-        const textChunk = decoder.decode(chunk, { stream: true });
-        const matches = [...textChunk.matchAll(/"text":\s*"((?:[^"\\]|\\.)*)"/g)];
-        for (const m of matches) {
-          try {
-            const parsed = JSON.parse(`"${m[1]}"`);
-            if (parsed) {
-              controller.enqueue(encoder.encode(parsed));
-            }
-          } catch (e) {}
+    const rawText = await geminiRes.text();
+    let fullText = '';
+    try {
+      const parsed = JSON.parse(rawText);
+      if (Array.isArray(parsed)) {
+        for (const chunk of parsed) {
+          const chunkText = chunk.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          fullText += chunkText;
         }
-      },
-    });
-
-    if (geminiRes.body) {
-      return new Response(geminiRes.body.pipeThrough(transformStream), {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Cache-Control': 'no-cache, no-transform',
-        },
-      });
+      }
+    } catch (e) {
+      console.error('Failed to parse Gemini response array:', e);
     }
 
-    return new Response('Hello! I am Rescue AI. How can I help you today?', {
+    if (!fullText.trim()) {
+      fullText = 'Hello! I am Rescue AI, your RouteRescue LK assistant. How can I help you today?';
+    }
+
+    return new Response(fullText, {
       status: 200,
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+      },
     });
   } catch (err: any) {
     console.error('Rescue AI Route Error:', err);
