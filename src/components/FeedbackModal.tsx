@@ -2,15 +2,17 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Check, X, MessageSquare, ThumbsUp, ShieldCheck } from 'lucide-react';
+import { Star, Check, X, MessageSquare, ThumbsUp, ShieldCheck, Download, FileText } from 'lucide-react';
 import { FeedbackItem, Incident, Mechanic, useSharedState, INITIAL_FEEDBACK } from '@/utils/store';
 import { supabase } from '@/utils/supabase';
+import { generateIncidentInvoicePDF } from '@/utils/pdfGenerator';
 
 interface FeedbackModalProps {
   isOpen: boolean;
   onClose: () => void;
   incident: Incident | null;
   mechanic: Mechanic | null;
+  onOpenInvoice?: () => void;
 }
 
 const PRESET_TAGS = [
@@ -22,7 +24,7 @@ const PRESET_TAGS = [
   '🔋 Quick Battery Jump',
 ];
 
-export default function FeedbackModal({ isOpen, onClose, incident, mechanic }: FeedbackModalProps) {
+export default function FeedbackModal({ isOpen, onClose, incident, mechanic, onOpenInvoice }: FeedbackModalProps) {
   const [rating, setRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [selectedTags, setSelectedTags] = useState<string[]>(['⚡ Fast Arrival', '🛠️ Expert Repair']);
@@ -40,6 +42,10 @@ export default function FeedbackModal({ isOpen, onClose, incident, mechanic }: F
     } else {
       setSelectedTags([...selectedTags, tag]);
     }
+  };
+
+  const handleDownloadInvoice = () => {
+    generateIncidentInvoicePDF(incident, mechanic);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,26 +88,21 @@ export default function FeedbackModal({ isOpen, onClose, incident, mechanic }: F
 
     setIsSubmitting(false);
     setIsSubmitted(true);
-
-    setTimeout(() => {
-      setIsSubmitted(false);
-      onClose();
-    }, 1800);
   };
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl overflow-hidden text-slate-100"
+          className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl overflow-hidden text-slate-100 my-auto max-h-[90vh] flex flex-col justify-between"
         >
           {/* Top Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-slate-800 transition"
+            className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-full hover:bg-slate-800 transition cursor-pointer z-10"
           >
             <X className="h-5 w-5" />
           </button>
@@ -110,15 +111,51 @@ export default function FeedbackModal({ isOpen, onClose, incident, mechanic }: F
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="py-10 text-center flex flex-col items-center justify-center gap-3"
+              className="py-6 text-center flex flex-col items-center justify-center gap-4"
             >
               <div className="h-16 w-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-3xl">
                 <Check className="h-8 w-8 stroke-[3]" />
               </div>
-              <h3 className="text-xl font-bold text-slate-100">Thank You for Your Feedback!</h3>
-              <p className="text-xs text-slate-400 max-w-xs">
-                Your rating helps garage owners improve service quality across Sri Lanka.
-              </p>
+              <div>
+                <h3 className="text-xl font-bold text-slate-100">Thank You for Your Feedback!</h3>
+                <p className="text-xs text-slate-400 max-w-xs mt-1">
+                  Your rating helps garage owners improve service quality across Sri Lanka.
+                </p>
+              </div>
+
+              {/* PDF Invoice Download & Actions on Thank You screen */}
+              <div className="w-full space-y-2 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleDownloadInvoice}
+                  className="w-full py-3 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-slate-950 font-black text-xs border border-orange-400 shadow-lg shadow-orange-950/50 cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-95"
+                >
+                  <Download size={15} />
+                  <span>Download Repair Invoice (PDF)</span>
+                </button>
+
+                {onOpenInvoice && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenInvoice();
+                    }}
+                    className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 cursor-pointer transition-all flex items-center justify-center gap-2"
+                  >
+                    <FileText size={14} className="text-amber-400" />
+                    <span>View Invoice Details</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full py-2.5 rounded-xl border border-slate-700 text-xs font-bold text-slate-400 hover:text-slate-200 transition"
+                >
+                  Done
+                </button>
+              </div>
             </motion.div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -214,21 +251,32 @@ export default function FeedbackModal({ isOpen, onClose, incident, mechanic }: F
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-1">
+              <div className="space-y-2 pt-1">
                 <button
                   type="button"
-                  onClick={onClose}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-700 text-xs font-bold text-slate-300 hover:bg-slate-800 transition"
+                  onClick={handleDownloadInvoice}
+                  className="w-full py-2.5 px-4 rounded-xl bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 font-bold text-xs border border-orange-500/40 cursor-pointer transition-all flex items-center justify-center gap-2"
                 >
-                  Skip
+                  <Download size={14} />
+                  <span>Download Repair Invoice (PDF)</span>
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-xs font-bold text-slate-950 hover:from-amber-400 hover:to-orange-400 transition shadow-lg shadow-amber-500/20 disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
-                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-700 text-xs font-bold text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer"
+                  >
+                    Skip
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-xs font-bold text-slate-950 hover:from-amber-400 hover:to-orange-400 transition shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer"
+                  >
+                    {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+                  </button>
+                </div>
               </div>
             </form>
           )}

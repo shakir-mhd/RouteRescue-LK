@@ -1356,6 +1356,12 @@ export default function MotoristPortal() {
             onClose={() => setIsFeedbackModalOpen(false)}
             incident={feedbackIncident}
             mechanic={feedbackMechanic}
+            onOpenInvoice={() => {
+              if (feedbackIncident) {
+                setSelectedInvoiceIncident(feedbackIncident);
+                setInvoiceModalOpen(true);
+              }
+            }}
           />
         </>
       )}
