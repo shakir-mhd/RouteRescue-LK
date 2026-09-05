@@ -34,7 +34,8 @@ import {
   Calendar,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs, SubscriptionPlan, DEFAULT_PLANS } from '@/utils/store';
+import { useSharedState, SEED_MECHANICS, calculateDistanceKm, PendingLocationRequest, SRI_LANKA_REGIONS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs, SubscriptionPlan, DEFAULT_PLANS, FeedbackItem, INITIAL_FEEDBACK, calculateMechanicRating, normalizeTierName, getTierColorScheme, Incident, Mechanic, Employee } from '@/utils/store';
+import { MonthlyIncidentTrendChart } from '../../components/AnalyticsCharts';
 import { supabase } from '../../utils/supabase';
 import MechanicRobotChat from '../../components/MechanicRobotChat';
 import InvoiceModal from '../../components/InvoiceModal';
@@ -55,52 +56,6 @@ const CITIES = SRI_LANKA_REGIONS.map((r) => ({
   coords: r.coords as [number, number],
 }));
 
-interface Employee {
-  id: string | number;
-  name: string;
-  phone: string;
-  role: string;
-}
-
-interface Mechanic {
-  id: string | number;
-  name: string;
-  businessName: string;
-  city: string;
-  lat: number;
-  lng: number;
-  tier: string;
-  radius: number;
-  phone: string;
-  email?: string;
-  nic: string;
-  password?: string;
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Blocked' | 'Revoked';
-  isAvailable?: boolean;
-  isOpen?: boolean;
-  activeJobs?: number;
-  maxCapacity?: number;
-  employees?: Employee[];
-  pendingLocation?: PendingLocationRequest;
-}
-
-interface Incident {
-  id: string;
-  category: string;
-  lat: number;
-  lng: number;
-  status: 'Request Sent' | 'Mechanic Assigned' | 'Mechanic En Route' | 'On-Site Repair' | 'Resolved' | 'Cancelled';
-  baseTariff: number;
-  timestamp: string;
-  mechanicId?: string | number;
-  distanceKm?: number;
-  driverName?: string;
-  driverPhone?: string;
-  assignedEmployee?: Employee;
-  cancellationReason?: string;
-  cancelledBy?: 'driver' | 'mechanic' | 'admin';
-}
-
 export default function MechanicPortal() {
   const router = useRouter();
 
@@ -108,6 +63,7 @@ export default function MechanicPortal() {
   const [mechanics, setMechanics] = useSharedState<Mechanic[]>('routerescue_mechanics', SEED_MECHANICS);
   const [incidents, setIncidents] = useSharedState<Incident[]>('routerescue_incidents', []);
   const [plans] = useSharedState<SubscriptionPlan[]>('routerescue_plans', DEFAULT_PLANS);
+  const [feedbackList] = useSharedState<FeedbackItem[]>('routerescue_feedback', INITIAL_FEEDBACK);
   const [currentMechanic, setCurrentMechanic] = useState<Mechanic | null>(null);
   const [mechInvoiceModalOpen, setMechInvoiceModalOpen] = useState(false);
   const [selectedMechInvoiceIncident, setSelectedMechInvoiceIncident] = useState<Incident | null>(null);
@@ -117,7 +73,7 @@ export default function MechanicPortal() {
   );
 
   // Tab & Form State
-  const [activeTab, setActiveTab] = useState<'dispatch' | 'roster' | 'history' | 'settings'>('dispatch');
+  const [activeTab, setActiveTab] = useState<'dispatch' | 'roster' | 'history' | 'settings' | 'reviews'>('dispatch');
   const [historyStatusFilter, setHistoryStatusFilter] = useState<'all' | 'resolved' | 'cancelled'>('all');
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [historyCategoryFilter, setHistoryCategoryFilter] = useState('all');
@@ -1621,6 +1577,17 @@ export default function MechanicPortal() {
               </button>
 
               <button
+                onClick={() => setActiveTab('reviews')}
+                className={`pb-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'reviews'
+                    ? 'border-accent-green text-accent-green'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                  }`}
+              >
+                <Star size={14} className="text-amber-400" />
+                <span>Customer Reviews ({calculateMechanicRating(currentMechanic.id, feedbackList).count})</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('settings')}
                 className={`pb-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'settings'
                     ? 'border-accent-green text-accent-green'
@@ -1631,6 +1598,76 @@ export default function MechanicPortal() {
                 <span>Account & Security</span>
               </button>
             </div>
+
+            {/* TAB: CUSTOMER REVIEWS & FEEDBACK */}
+            {activeTab === 'reviews' && (() => {
+              const ratingData = calculateMechanicRating(currentMechanic.id, feedbackList);
+              const garageFeedbacks = feedbackList.filter((f) => String(f.mechanicId) === String(currentMechanic.id));
+
+              return (
+                <div className="space-y-6">
+                  {/* Rating Summary Card */}
+                  <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="h-16 w-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex flex-col items-center justify-center font-black">
+                        <span className="text-xl">★ {ratingData.avgRating}</span>
+                        <span className="text-[8px] text-amber-300/80 uppercase tracking-widest">Score</span>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-extrabold text-slate-100">Driver Satisfaction Score</h3>
+                        <p className="text-xs text-slate-400 mt-0.5">Based on {ratingData.count} verified motorist reviews for {currentMechanic.businessName || currentMechanic.name}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-300 bg-slate-950 px-4 py-2 rounded-xl border border-slate-850">
+                      <span>Service Tier:</span>
+                      <span className="text-amber-400 uppercase font-black">{normalizeTierName(currentMechanic.tier)}</span>
+                    </div>
+                  </div>
+
+                  {/* Monthly Incident Volume Graph */}
+                  <MonthlyIncidentTrendChart incidents={completedJobsForGarage} />
+
+                  {/* Feedback Reviews List */}
+                  <div className="glass-panel p-5 rounded-2xl border-slate-800 space-y-4">
+                    <h4 className="text-xs font-black text-slate-200 uppercase tracking-wider">Motorist Feedback Comments</h4>
+                    {garageFeedbacks.length === 0 ? (
+                      <p className="text-xs text-slate-500 py-6 text-center">No driver feedback reviews submitted yet for this garage.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {garageFeedbacks.map((fb) => (
+                          <div key={fb.id} className="p-4 rounded-xl bg-slate-950/60 border border-slate-850 space-y-2 text-xs">
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-200">{fb.driverName}</span>
+                                <span className="text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                  ★ {fb.rating} / 5
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-500">{new Date(fb.createdAt).toLocaleDateString('en-LK')}</span>
+                            </div>
+
+                            {fb.tags && fb.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {fb.tags.map((t, idx) => (
+                                  <span key={idx} className="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300 font-semibold">
+                                    {t}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {fb.comment && (
+                              <p className="text-xs text-slate-300 italic pt-1 border-t border-slate-900">"{fb.comment}"</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* TAB 1: Dispatch & Booking Calls */}
             {activeTab === 'dispatch' && (

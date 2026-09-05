@@ -71,6 +71,7 @@ export interface Incident {
   driverName?: string;
   driverPhone?: string;
   assignedEmployee?: {
+    id?: string | number;
     name: string;
     phone: string;
     role: string;
@@ -97,24 +98,24 @@ export interface TierColorScheme {
   iconSymbol: string;
 }
 
-export function getTierColorScheme(tierRaw?: string): TierColorScheme {
-  const tier = (tierRaw || 'Basic').toLowerCase().trim();
+export function normalizeTierName(rawTier?: string): string {
+  if (!rawTier) return 'Bronze';
+  const t = rawTier.trim().toLowerCase();
+  if (t === 'gold' || t.includes('gold') || t.includes('pro') || t.includes('enterprise') || t.includes('vip') || t.includes('ultra')) {
+    return 'Gold';
+  }
+  if (t === 'silver' || t.includes('silver') || t.includes('premium') || t.includes('starter') || t.includes('standard')) {
+    return 'Silver';
+  }
+  return 'Bronze';
+}
 
-  if (tier.includes('pro') || tier.includes('enterprise') || tier.includes('vip') || tier.includes('ultra')) {
+export function getTierColorScheme(tierRaw?: string): TierColorScheme {
+  const norm = normalizeTierName(tierRaw);
+
+  if (norm === 'Gold') {
     return {
-      name: tierRaw || 'Premium Pro',
-      pinBg: 'bg-purple-600',
-      hexColor: '#a855f7',
-      ringFill: '#a855f71a',
-      ringStroke: '#a855f7',
-      badgeBg: 'bg-purple-500/20',
-      badgeText: 'text-purple-300',
-      badgeBorder: 'border-purple-500/40',
-      iconSymbol: '👑',
-    };
-  } else if (tier.includes('premium') || tier.includes('gold') || tier.includes('plus')) {
-    return {
-      name: tierRaw || 'Premium',
+      name: tierRaw || 'Gold',
       pinBg: 'bg-amber-500',
       hexColor: '#f59e0b',
       ringFill: '#f59e0b1a',
@@ -122,34 +123,91 @@ export function getTierColorScheme(tierRaw?: string): TierColorScheme {
       badgeBg: 'bg-amber-500/20',
       badgeText: 'text-amber-400',
       badgeBorder: 'border-amber-500/40',
-      iconSymbol: '⭐',
+      iconSymbol: '👑',
     };
-  } else if (tier.includes('starter') || tier.includes('silver') || tier.includes('standard')) {
+  } else if (norm === 'Silver') {
     return {
-      name: tierRaw || 'Standard',
-      pinBg: 'bg-cyan-500',
-      hexColor: '#06b6d4',
-      ringFill: '#06b6d41a',
-      ringStroke: '#06b6d4',
-      badgeBg: 'bg-cyan-500/20',
-      badgeText: 'text-cyan-300',
-      badgeBorder: 'border-cyan-500/40',
+      name: tierRaw || 'Silver',
+      pinBg: 'bg-slate-400',
+      hexColor: '#94a3b8',
+      ringFill: '#94a3b81a',
+      ringStroke: '#94a3b8',
+      badgeBg: 'bg-slate-400/20',
+      badgeText: 'text-slate-200',
+      badgeBorder: 'border-slate-400/40',
       iconSymbol: '🛡️',
     };
   } else {
-    // Default Basic Tier
+    // Bronze Tier
     return {
-      name: tierRaw || 'Basic',
-      pinBg: 'bg-emerald-500',
-      hexColor: '#10b981',
-      ringFill: '#10b9811a',
-      ringStroke: '#10b981',
-      badgeBg: 'bg-emerald-500/20',
-      badgeText: 'text-emerald-400',
-      badgeBorder: 'border-emerald-500/40',
-      iconSymbol: '🔧',
+      name: tierRaw || 'Bronze',
+      pinBg: 'bg-amber-700',
+      hexColor: '#d97706',
+      ringFill: '#d977061a',
+      ringStroke: '#d97706',
+      badgeBg: 'bg-amber-700/20',
+      badgeText: 'text-amber-500',
+      badgeBorder: 'border-amber-700/40',
+      iconSymbol: '🥉',
     };
   }
+}
+
+export interface FeedbackItem {
+  id: string;
+  incidentId: string;
+  mechanicId: string | number;
+  driverName: string;
+  driverPhone?: string;
+  rating: number; // 1 to 5
+  tags?: string[];
+  comment?: string;
+  createdAt: string;
+}
+
+export const INITIAL_FEEDBACK: FeedbackItem[] = [
+  {
+    id: 'fb-101',
+    incidentId: 'INC-7001',
+    mechanicId: '1',
+    driverName: 'Kamal Perera',
+    driverPhone: '0771234567',
+    rating: 5,
+    tags: ['⚡ Fast Arrival', '🛠️ Expert Repair', '💬 Friendly Service'],
+    comment: 'Replaced my flat tire in less than 15 minutes near SLTC Padukka. Extremely helpful staff!',
+    createdAt: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'fb-102',
+    incidentId: 'INC-7002',
+    mechanicId: '2',
+    driverName: 'Nimal Fernando',
+    driverPhone: '0719876543',
+    rating: 5,
+    tags: ['⚡ Fast Arrival', '💰 Fair Value'],
+    comment: 'Jump-started my dead battery quickly during heavy rain. Great service!',
+    createdAt: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'fb-103',
+    incidentId: 'INC-7003',
+    mechanicId: '1',
+    driverName: 'Sahan Jayawardena',
+    driverPhone: '0754443322',
+    rating: 4,
+    tags: ['🛠️ Expert Repair', '💬 Friendly Service'],
+    comment: 'Diagnosed engine overheating problem on Colombo-Kandy road. Very professional.',
+    createdAt: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString(),
+  },
+];
+
+export function calculateMechanicRating(mechanicId: string | number, feedbackList: FeedbackItem[]) {
+  const mechIdStr = String(mechanicId);
+  const relevant = (feedbackList || []).filter((f) => String(f.mechanicId) === mechIdStr);
+  if (relevant.length === 0) return { avgRating: 5.0, count: 0 };
+  const sum = relevant.reduce((acc, f) => acc + (Number(f.rating) || 5), 0);
+  const avg = Math.round((sum / relevant.length) * 10) / 10;
+  return { avgRating: avg, count: relevant.length };
 }
 
 export function getCancelledIncidentIds(): Set<string> {
@@ -207,25 +265,25 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettings = {
 
 export const DEFAULT_PLANS: SubscriptionPlan[] = [
   {
-    id: 'plan-basic',
-    name: 'Basic',
+    id: 'plan-bronze',
+    name: 'Bronze',
     price: 2000,
     radius: 10,
     maxCapacity: 3,
     features: ['10km Dispatch Radius', '3 Concurrent Active Jobs', 'Standard Directory Listing'],
   },
   {
-    id: 'plan-premium',
-    name: 'Premium',
-    price: 5000,
+    id: 'plan-silver',
+    name: 'Silver',
+    price: 4500,
     radius: 20,
     maxCapacity: 5,
     features: ['20km Dispatch Radius', '5 Concurrent Active Jobs', 'Priority Triage Banner'],
   },
   {
-    id: 'plan-pro',
-    name: 'Premium Pro',
-    price: 6000,
+    id: 'plan-gold',
+    name: 'Gold',
+    price: 7500,
     radius: 25,
     maxCapacity: 5,
     features: ['25km Dispatch Radius', '5 Concurrent Active Jobs', 'Priority Triage Banner', 'Fleet Analytics'],

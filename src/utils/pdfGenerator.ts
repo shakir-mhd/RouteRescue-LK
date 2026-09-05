@@ -1,4 +1,4 @@
-import { Incident, Mechanic } from './store';
+import { Incident, Mechanic, normalizeTierName } from './store';
 
 // Helper to format currency LKR
 function formatLKR(amount: number): string {
@@ -377,7 +377,7 @@ export function generateGarageMonthlyReportPDF(mechanic: any, incidents: any[], 
           <div class="brand-title">RouteRescue LK</div>
           <div class="brand-subtitle">Garage Partner Monthly Performance & Earnings Report</div>
           <div style="font-size: 10px; color: #64748b; margin-top: 2px;">
-            Partner Garage: <strong>${mechanic.businessName || mechanic.name}</strong> (${mechanic.city}) | Tier: <strong>${mechanic.tier}</strong>
+            Partner Garage: <strong>${mechanic.businessName || mechanic.name}</strong> (${mechanic.city}) | Tier: <strong>${normalizeTierName(mechanic.tier)}</strong>
           </div>
         </td>
         <td style="text-align: right; vertical-align: top;">
@@ -570,7 +570,7 @@ export function generateAdminExecutiveReportPDF(incidents: any[], mechanics: any
           <tr>
             <td><strong>${m.businessName || m.name}</strong></td>
             <td>${m.city}</td>
-            <td><span style="font-weight: 700; color: #2563eb;">${m.tier}</span></td>
+            <td><span style="font-weight: 700; color: #2563eb;">${normalizeTierName(m.tier)}</span></td>
             <td><span style="color: #10b981; font-weight: 700;">${m.status}</span></td>
             <td style="text-align: right; font-weight: 700;">
               ${incidents.filter((i) => String(i.mechanicId) === String(m.id) && i.status === 'Resolved').length} Jobs

@@ -11,6 +11,7 @@ import TriageDrawer from '../../components/TriageDrawer';
 import LiveTracker from '../../components/LiveTracker';
 import MechanicRobotChat from '../../components/MechanicRobotChat';
 import InvoiceModal from '../../components/InvoiceModal';
+import FeedbackModal from '../../components/FeedbackModal';
 import { generateIncidentInvoicePDF } from '../../utils/pdfGenerator';
 
 const CITIES = SRI_LANKA_REGIONS.map((r) => ({
@@ -58,10 +59,12 @@ export default function MotoristPortal() {
   const [activeView, setActiveView] = useState<'map' | 'tracker'>('map');
   const [selectedCity, setSelectedCity] = useState(CITIES[0]);
   const [reportMode, setReportMode] = useState(false);
+  const [reportCategory, setReportCategory] = useState<string | null>(null);
+
   const [userLocation, setUserLocation] = useState<[number, number]>(CITIES[0].coords);
+  const [reportLocation, setReportLocation] = useState<[number, number]>(CITIES[0].coords);
   const [mapCenter, setMapCenter] = useState<[number, number]>(CITIES[0].coords);
   const [isBrowsingRegion, setIsBrowsingRegion] = useState<boolean>(false);
-  const [reportLocation, setReportLocation] = useState<[number, number]>(CITIES[0].coords);
   const [mapZoom, setMapZoom] = useState<number>(14);
 
   // Ref to track if driver explicitly selected a manual region (prevents watchPosition from overwriting)
@@ -82,6 +85,11 @@ export default function MotoristPortal() {
   const [driverHistoryOpen, setDriverHistoryOpen] = useState(false);
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [historyStatusFilter, setHistoryStatusFilter] = useState<'All' | 'Resolved' | 'Cancelled'>('All');
+
+  // Feedback Modal State
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [feedbackIncident, setFeedbackIncident] = useState<Incident | null>(null);
+  const [feedbackMechanic, setFeedbackMechanic] = useState<Mechanic | null>(null);
 
   // Restore login session locally & request device GPS coordinates
   useEffect(() => {
@@ -1289,18 +1297,32 @@ export default function MotoristPortal() {
                               <div className="text-[10px] text-slate-400">Distance: {inc.distanceKm || 0} km</div>
                             </div>
 
-                            <div className="flex justify-between items-center pt-1 border-t border-slate-800/60">
+                            <div className="flex justify-between items-center pt-1 border-t border-slate-800/60 flex-wrap gap-2">
                               <span className="text-xs font-black text-amber-400">LKR {totalFee.toLocaleString()}</span>
-                              <button
-                                onClick={() => {
-                                  setSelectedInvoiceIncident(inc);
-                                  setInvoiceModalOpen(true);
-                                }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition-all border border-slate-700 cursor-pointer"
-                              >
-                                <FileText size={13} className="text-orange-400" />
-                                <span>Invoice PDF</span>
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                {isResolved && (
+                                  <button
+                                    onClick={() => {
+                                      setFeedbackIncident(inc);
+                                      setFeedbackMechanic(mech || null);
+                                      setIsFeedbackModalOpen(true);
+                                    }}
+                                    className="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold border border-amber-500/40 cursor-pointer transition-all active:scale-95"
+                                  >
+                                    ⭐ Rate
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    setSelectedInvoiceIncident(inc);
+                                    setInvoiceModalOpen(true);
+                                  }}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition-all border border-slate-700 cursor-pointer"
+                                >
+                                  <FileText size={13} className="text-orange-400" />
+                                  <span>Invoice PDF</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -1318,6 +1340,22 @@ export default function MotoristPortal() {
             onClose={() => setInvoiceModalOpen(false)}
             incident={selectedInvoiceIncident}
             mechanic={mechanics.find((m) => String(m.id) === String(selectedInvoiceIncident?.mechanicId))}
+            onOpenFeedback={() => {
+              if (selectedInvoiceIncident) {
+                const mech = mechanics.find((m) => String(m.id) === String(selectedInvoiceIncident.mechanicId));
+                setFeedbackIncident(selectedInvoiceIncident);
+                setFeedbackMechanic(mech || null);
+                setIsFeedbackModalOpen(true);
+              }
+            }}
+          />
+
+          {/* Driver 5-Star Feedback Modal */}
+          <FeedbackModal
+            isOpen={isFeedbackModalOpen}
+            onClose={() => setIsFeedbackModalOpen(false)}
+            incident={feedbackIncident}
+            mechanic={feedbackMechanic}
           />
         </>
       )}

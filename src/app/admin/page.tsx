@@ -7,9 +7,13 @@ import {
   ArrowLeft, ShieldAlert, Key, UserCheck, CreditCard, Map, Info, Star,
   Building2, Users, Settings, Eye, RefreshCw, X, AlertTriangle, FileText,
   Calendar, Trash2, CheckCircle, Phone, Clock, ShieldCheck, MapPin, ExternalLink, LogOut,
-  Search, Filter, CheckCircle2, XCircle, Banknote, Download
+  Search, Filter, CheckCircle2, XCircle, Banknote, Download, Trophy, Award, TrendingUp
 } from 'lucide-react';
-import { useSharedState, Incident, Mechanic, SEED_MECHANICS, DEFAULT_ADMIN_SETTINGS, AdminSettings, SubscriptionPlan, DEFAULT_PLANS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs } from '../../utils/store';
+import {
+  useSharedState, Incident, Mechanic, SEED_MECHANICS, DEFAULT_ADMIN_SETTINGS, AdminSettings, SubscriptionPlan, DEFAULT_PLANS, addCancelledIncidentId, getCancelledIncidentIds, parseTimestampMs,
+  FeedbackItem, INITIAL_FEEDBACK, calculateMechanicRating, normalizeTierName
+} from '../../utils/store';
+import { MonthlyIncidentTrendChart, CategoryDistributionChart } from '../../components/AnalyticsCharts';
 import { supabase } from '../../utils/supabase';
 import dynamic from 'next/dynamic';
 import MechanicRobotChat from '../../components/MechanicRobotChat';
@@ -35,8 +39,8 @@ export default function SuperAdminDashboard() {
   const [passcode, setPasscode] = useState('');
   const [passError, setPassError] = useState('');
 
-  // Active Tab View State: 'live-incidents' | 'completed-history' | 'queue' | 'directory' | 'billing' | 'map' | 'settings'
-  const [activeTab, setActiveTab] = useState<'live-incidents' | 'completed-history' | 'queue' | 'directory' | 'billing' | 'map' | 'settings'>('live-incidents');
+  // Active Tab View State: 'live-incidents' | 'completed-history' | 'queue' | 'directory' | 'billing' | 'map' | 'settings' | 'analytics'
+  const [activeTab, setActiveTab] = useState<'live-incidents' | 'completed-history' | 'queue' | 'directory' | 'billing' | 'map' | 'settings' | 'analytics'>('live-incidents');
 
   // Month & History Filters for completed booking history
   const [selectedMonth, setSelectedMonth] = useState<string>('All');
@@ -60,6 +64,7 @@ export default function SuperAdminDashboard() {
   const [mechanics, setMechanics] = useSharedState<Mechanic[]>('routerescue_mechanics', SEED_MECHANICS);
   const [adminSettings, setAdminSettings] = useSharedState<AdminSettings>('routerescue_admin_settings', DEFAULT_ADMIN_SETTINGS);
   const [plans, setPlans] = useSharedState<SubscriptionPlan[]>('routerescue_plans', DEFAULT_PLANS);
+  const [feedbackList] = useSharedState<FeedbackItem[]>('routerescue_feedback', INITIAL_FEEDBACK);
 
   // Real-Time Heartbeat Auto-Sync: Poll Supabase 'incidents' & 'mechanics' tables every 2.5 seconds
   useEffect(() => {
@@ -808,12 +813,35 @@ export default function SuperAdminDashboard() {
 
   const approvedMechanics = mechanics.filter((m) => m.status === 'Approved');
   const blockedGarages = mechanics.filter((m) => m.status === 'Blocked' || m.status === 'Revoked');
-  const basicCount = approvedMechanics.filter((m) => (m.tier || '').toLowerCase().includes('basic')).length;
-  const proCount = approvedMechanics.length - basicCount;
+  
+  const bronzeCount = approvedMechanics.filter((m) => normalizeTierName(m.tier) === 'Bronze').length;
+  const silverCount = approvedMechanics.filter((m) => normalizeTierName(m.tier) === 'Silver').length;
+  const goldCount = approvedMechanics.filter((m) => normalizeTierName(m.tier) === 'Gold').length;
+
   const totalMonthlyRevenue = approvedMechanics.reduce((sum, m) => {
-    const matchedPlan = plans.find((p) => p.name.toLowerCase() === String(m.tier).toLowerCase());
+    const norm = normalizeTierName(m.tier);
+    const matchedPlan = plans.find((p) => p.name.toLowerCase() === norm.toLowerCase());
     return sum + (matchedPlan ? Number(matchedPlan.price) : 2000);
   }, 0);
+
+  // Best Garage of the Month Spotlight Calculation
+  const currentMonthStr = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const garageMetrics = approvedMechanics.map((m) => {
+    const mIncidents = incidents.filter((i) => String(i.mechanicId) === String(m.id) && i.status === 'Resolved');
+    const ratingData = calculateMechanicRating(m.id, feedbackList);
+    const totalRev = mIncidents.reduce((s, inc) => s + Number(inc.baseTariff || 1000), 0);
+    const score = mIncidents.length * 10 + ratingData.avgRating * 5;
+    return {
+      mechanic: m,
+      completedJobs: mIncidents.length,
+      totalRev,
+      avgRating: ratingData.avgRating,
+      reviewCount: ratingData.count,
+      score,
+    };
+  });
+  garageMetrics.sort((a, b) => b.score - a.score);
+  const bestGarageSpotlight = garageMetrics[0] || null;
 
   const pendingQueue = mechanics.filter((m) => m.status === 'Pending');
   const pendingLocationRequests = mechanics.filter((m) => Boolean(m.pendingLocation));
@@ -1021,6 +1049,15 @@ export default function SuperAdminDashboard() {
           </button>
 
           <button
+            onClick={() => setActiveTab('analytics')}
+            className={`flex-1 py-2.5 px-2.5 text-center text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${activeTab === 'analytics' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'text-slate-400 hover:text-slate-200'
+              }`}
+          >
+            <Trophy size={14} className="text-amber-400" />
+            <span>Analytics & Spotlight</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('map')}
             className={`flex-1 py-2.5 px-2.5 text-center text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0 ${activeTab === 'map' ? 'bg-accent-orange/15 text-accent-orange border border-accent-orange/30' : 'text-slate-400 hover:text-slate-200'
               }`}
@@ -1038,6 +1075,55 @@ export default function SuperAdminDashboard() {
             <span>Settings</span>
           </button>
         </div>
+
+        {/* TAB: ANALYTICS & BEST GARAGE SPOTLIGHT */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            {/* Best Garage of the Month Spotlight Banner */}
+            {bestGarageSpotlight && (
+              <div className="relative overflow-hidden p-6 rounded-3xl bg-gradient-to-r from-amber-950/60 via-slate-900 to-amber-950/40 border border-amber-500/40 shadow-2xl">
+                <div className="absolute top-[-20%] right-[-10%] w-60 h-60 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
+                  <div className="flex items-center gap-4">
+                    <div className="h-16 w-16 rounded-2xl bg-amber-500/20 border border-amber-500/50 text-amber-400 flex items-center justify-center text-3xl shrink-0 shadow-lg shadow-amber-500/10">
+                      🏆
+                    </div>
+                    <div>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-black uppercase tracking-widest mb-1">
+                        <Award className="h-3 w-3" /> Best Garage of the Month
+                      </div>
+                      <h3 className="text-xl font-black text-slate-100">{bestGarageSpotlight.mechanic.businessName || bestGarageSpotlight.mechanic.name}</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Operating in <strong className="text-slate-200">{bestGarageSpotlight.mechanic.city}</strong> • Tier: <strong className="text-amber-400">{normalizeTierName(bestGarageSpotlight.mechanic.tier)}</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800">
+                    <div className="text-center px-3 border-r border-slate-800">
+                      <span className="text-[10px] text-slate-400 block font-bold uppercase">Jobs Done</span>
+                      <span className="text-base font-black text-emerald-400">{bestGarageSpotlight.completedJobs}</span>
+                    </div>
+                    <div className="text-center px-3 border-r border-slate-800">
+                      <span className="text-[10px] text-slate-400 block font-bold uppercase">Satisfaction</span>
+                      <span className="text-base font-black text-amber-400">★ {bestGarageSpotlight.avgRating} / 5.0</span>
+                    </div>
+                    <div className="text-center px-3">
+                      <span className="text-[10px] text-slate-400 block font-bold uppercase">Monthly Revenue</span>
+                      <span className="text-base font-black text-orange-400">LKR {bestGarageSpotlight.totalRev.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Analytics Charts Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <MonthlyIncidentTrendChart incidents={incidents} />
+              <CategoryDistributionChart incidents={incidents} />
+            </div>
+          </div>
+        )}
 
         {/* TAB: LIVE ACTIVE EMERGENCY BREAKDOWNS */}
         {activeTab === 'live-incidents' && (

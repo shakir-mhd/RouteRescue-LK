@@ -11,9 +11,10 @@ interface InvoiceModalProps {
   onClose: () => void;
   incident: any;
   mechanic?: any;
+  onOpenFeedback?: () => void;
 }
 
-export default function InvoiceModal({ isOpen, onClose, incident, mechanic }: InvoiceModalProps) {
+export default function InvoiceModal({ isOpen, onClose, incident, mechanic, onOpenFeedback }: InvoiceModalProps) {
   if (!isOpen || !incident) return null;
 
   const incidentDate = new Date(incident.timestamp || Date.now()).toLocaleString('en-LK', {
@@ -139,20 +140,33 @@ export default function InvoiceModal({ isOpen, onClose, incident, mechanic }: In
           </div>
 
           {/* Action Footer */}
-          <div className="p-4 border-t border-slate-800 bg-slate-950/80 flex items-center justify-end gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 font-bold text-xs transition-all cursor-pointer"
-            >
-              Close
-            </button>
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-slate-950 font-black text-xs border border-orange-400 shadow-lg shadow-orange-950/50 cursor-pointer transition-all active:scale-95"
-            >
-              <Download size={15} />
-              <span>Download Invoice (PDF)</span>
-            </button>
+          <div className="p-4 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between gap-2 flex-wrap">
+            {onOpenFeedback && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenFeedback();
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-xs border border-amber-500/40 transition-all cursor-pointer"
+              >
+                <span>⭐ Leave Rating & Feedback</span>
+              </button>
+            )}
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 font-bold text-xs transition-all cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleDownload}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-slate-950 font-black text-xs border border-orange-400 shadow-lg shadow-orange-950/50 cursor-pointer transition-all active:scale-95"
+              >
+                <Download size={15} />
+                <span>Download Invoice (PDF)</span>
+              </button>
+            </div>
           </div>
         </motion.div>
       </div>
