@@ -661,6 +661,23 @@ export function useSharedState<T>(key: string, initialValue: T): [T, (val: T | (
               setState(mappedFromSupabase as unknown as T);
               window.localStorage.setItem(key, JSON.stringify(mappedFromSupabase));
             }
+          } else if (key === 'routerescue_feedback') {
+            const { data, error } = await supabase.from('feedback').select('*').order('created_at', { ascending: false });
+            if (!error && data && data.length > 0) {
+              const mapped = data.map((fb: any) => ({
+                id: String(fb.id),
+                incidentId: String(fb.incident_id || fb.incidentId),
+                mechanicId: String(fb.mechanic_id || fb.mechanicId),
+                driverName: String(fb.driver_name || fb.driverName || 'Motorist'),
+                driverPhone: String(fb.driver_phone || fb.driverPhone || ''),
+                rating: Number(fb.rating || 5),
+                tags: Array.isArray(fb.tags) ? fb.tags : [],
+                comment: String(fb.comment || ''),
+                createdAt: fb.created_at || fb.createdAt || new Date().toISOString(),
+              }));
+              setState(mapped as unknown as T);
+              window.localStorage.setItem(key, JSON.stringify(mapped));
+            }
           }
         } catch (e) {
           console.error('Supabase fetch error', e);
